@@ -1,0 +1,37 @@
+# Ambiente virtual
+venv/
+
+# Configurações e segredos
+.env
+*.env
+
+# Arquivos Python compilados
+__pycache__/
+*.py[cod]
+
+# Pasta de downloads e arquivos binários
+downloads/
+*.deb
+
+# Logs
+*.log
+
+# Ferramentas e IDEs
+.vscode/
+.idea/
+
+# Cache de testes e builds
+*.egg-info/
+dist/
+build/
+*.sqlite3
+*.db
+.cache/
+pytest_cache/
+
+# Checkpoints de notebooks
+.ipynb_checkpoints/
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
