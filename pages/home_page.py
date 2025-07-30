@@ -9,32 +9,16 @@ class HomePage:
 
     def acessar_faturas(self):
         try:
-            contas = self.wait.until(EC.element_to_be_clickable((
-                By.XPATH, "//li[@data-e2e-header-menu-invoices='']//span[text()='Contas']"
-            )))
-            contas.click()
-            print("📂 Menu 'Contas' clicado.")
+            print("⏳ Tentando clicar no menu 'Contas'...")
+            self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, "//li[@data-e2e-header-menu-invoices='']//span[text()='Contas']")
+            )).click()
+            print("✅ Menu 'Contas' clicado com sucesso.")
 
-            faturas = self.wait.until(EC.element_to_be_clickable((
-                By.XPATH, "//li[@data-nav-menu-dropdown-item='invoices']//span[text()='Acessar faturas']"
-            )))
-            faturas.click()
-            print("🧾 Acessando página de faturas.")
+            print("⏳ Tentando acessar a opção 'Acessar faturas'...")
+            self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, "//li[@data-nav-menu-dropdown-item='invoices']//span[text()='Acessar faturas']")
+            )).click()
+            print("✅ Página de faturas acessada com sucesso.")
         except Exception as e:
             print(f"❌ Erro ao acessar menu de faturas: {e}")
-
-    def baixar_boleto_pdf(self):
-        try:
-            btn_baixar = self.wait.until(EC.element_to_be_clickable((
-                By.XPATH, "//button[contains(., 'Baixar agora')]"
-            )))
-            btn_baixar.click()
-            print("⬇️ Botão 'Baixar agora' clicado.")
-
-            boleto_opcao = self.wait.until(EC.element_to_be_clickable((
-                By.XPATH, "//button[contains(., 'Boleto (.pdf)')]"
-            )))
-            boleto_opcao.click()
-            print("📥 Boleto PDF solicitado.")
-        except Exception as e:
-            print(f"❌ Erro ao baixar o boleto PDF: {e}")
