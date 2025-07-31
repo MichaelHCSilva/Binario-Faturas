@@ -7,7 +7,7 @@ from pages.login_page import LoginPage
 from pages.home_page import HomePage
 from customer_selector.customer_selector_page import CustomerSelectorPage
 from customer_selector.cnpj_logger import CnpjLogger
-from utils.faturas_downloader import baixar_faturas_com_intervalo_amplo
+from utils.faturas_downloader import baixar_todas_faturas_paginadas
 
 def main():
     load_dotenv()
@@ -44,11 +44,11 @@ def main():
             home_page.acessar_faturas()
 
             print("⏳ Aguardando página de faturas carregar...")
-            time.sleep(3)  # Aguarda tela carregar completamente
+            time.sleep(3)
 
             print("📄 Iniciando download das faturas do mês atual e anterior...")
-            baixar_faturas_com_intervalo_amplo(driver)
-            
+            baixar_todas_faturas_paginadas(driver)
+
             print("⏳ Pausando para garantir finalização do download...")
             time.sleep(3)
         else:
