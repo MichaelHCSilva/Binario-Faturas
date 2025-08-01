@@ -29,16 +29,32 @@ def main():
         login_page.perform_login(usuario, senha)
         print("✅ Login realizado com sucesso.")
 
-        print("👥 Selecionando CNPJ...")
+        print("👥 Iniciando processamento de CNPJs...")
         customer_selector = CustomerSelectorPage(driver)
         cnpj_logger = CnpjLogger()
 
         customer_selector.abrir_lista_de_cnpjs()
-        cnpj = customer_selector.clicar_primeiro_cnpj_da_lista()
+        lista_cnpjs = customer_selector.listar_cnpjs_visiveis()
+        customer_selector.fechar_lista_de_cnpjs()
 
-        if cnpj:
-            cnpj_logger.registrar(cnpj)
-            print(f"✅ CNPJ registrado: {cnpj}")
+        if not lista_cnpjs:
+            print("⚠️ NENHUM CNPJ encontrado na lista. Abortando.")
+            return
+
+        print(f"✅ Encontrados {len(lista_cnpjs)} CNPJs para processar: {lista_cnpjs}")
+
+        for cnpj_atual in lista_cnpjs:
+            print(f"\n--- 🔄 Processando CNPJ: {cnpj_atual} ---")
+            
+            customer_selector.abrir_lista_de_cnpjs()
+            
+            if not customer_selector.clicar_cnpj_por_texto(cnpj_atual):
+                print(f"⚠️ Não foi possível selecionar o CNPJ {cnpj_atual}. Pulando para o próximo.")
+                customer_selector.fechar_lista_de_cnpjs()
+                continue
+            
+            cnpj_logger.registrar(cnpj_atual)
+            print(f"✅ CNPJ registrado no log: {cnpj_atual}")
 
             home_page = HomePage(driver)
             home_page.acessar_faturas()
@@ -48,11 +64,12 @@ def main():
 
             print("📄 Iniciando download das faturas do mês atual e anterior...")
             baixar_todas_faturas_paginadas(driver)
-
+            
             print("⏳ Pausando para garantir finalização do download...")
             time.sleep(3)
-        else:
-            print("⚠️ Nenhum CNPJ foi selecionado. Abortando operação.")
+            
+            driver.back()
+            time.sleep(2)
 
     except Exception as e:
         print(f"❌ Erro inesperado na execução: {e}")
