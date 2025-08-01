@@ -2,6 +2,8 @@ from dotenv import load_dotenv
 import os
 import time
 
+from selenium.common.exceptions import NoSuchElementException # Importação Adicionada!
+
 from utils.driver_factory import create_driver
 from pages.login_page import LoginPage
 from pages.home_page import HomePage
@@ -19,7 +21,8 @@ def main():
         print("❌ LOGIN_USUARIO ou LOGIN_SENHA não encontrados no .env")
         return
 
-    driver = create_driver()
+    pasta_download_base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "faturas")
+    driver = create_driver(pasta_download_base)
     print("🚀 Driver criado, iniciando execução.")
 
     try:
@@ -63,7 +66,7 @@ def main():
             time.sleep(3)
 
             print("📄 Iniciando download das faturas do mês atual e anterior...")
-            baixar_todas_faturas_paginadas(driver)
+            baixar_todas_faturas_paginadas(driver, pasta_download_base, cnpj_atual)
             
             print("⏳ Pausando para garantir finalização do download...")
             time.sleep(3)
@@ -71,7 +74,7 @@ def main():
             driver.back()
             time.sleep(2)
 
-    except Exception as e:
+    except (Exception, NoSuchElementException) as e:
         print(f"❌ Erro inesperado na execução: {e}")
 
     finally:
