@@ -23,7 +23,7 @@ def close_generic_popups(driver, max_wait=2):
         try:
             btn = WebDriverWait(driver, max_wait).until(EC.element_to_be_clickable((By.CSS_SELECTOR, sel)))
             btn.click()
-            print("✅ Popup closed:", sel)
+            print("Popup closed:", sel)
             return True
         except TimeoutException:
             continue
@@ -59,7 +59,6 @@ def process_invoice_menu_button(driver, target_folder):
 
         before_files = set(os.listdir(TEMP_DOWNLOAD_FOLDER))
 
-        # Corrigido: procurar pelo link com texto "Boleto (.pdf)"
         links = dropdown.find_elements(By.CSS_SELECTOR, "a")
         boleto_link = next((a for a in links if "Boleto (.pdf)" in a.text), None)
 
@@ -70,12 +69,12 @@ def process_invoice_menu_button(driver, target_folder):
                 pdf_path = os.path.join(TEMP_DOWNLOAD_FOLDER, pdf_name)
                 wait_for_download_complete(pdf_path)
                 shutil.move(pdf_path, os.path.join(target_folder, f"vivo_{pdf_name}"))
-                print(f"✅ Fatura PDF movida: {pdf_name}")
+                print(f"Fatura PDF movida: {pdf_name}")
         else:
-            print("⚠️ Link 'Boleto (.pdf)' não encontrado no menu suspenso.")
+            print("Link 'Boleto (.pdf)' não encontrado no menu suspenso.")
 
     except Exception as e:
-        print(f"⚠️ Erro ao tentar baixar via menu suspenso: {type(e).__name__} - {e}")
+        print(f"Erro ao tentar baixar via menu suspenso: {type(e).__name__} - {e}")
 
 
 
@@ -86,7 +85,7 @@ def download_invoices_from_page(driver, target_folder, cnpj):
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.mve-grid-row"))
             )
         except TimeoutException:
-            print("⚠️ Nenhum grid de faturas encontrado, tentando menu suspenso.")
+            print("Nenhum grid de faturas encontrado, tentando menu suspenso.")
             process_invoice_menu_button(driver, target_folder)
             return
 
@@ -96,11 +95,11 @@ def download_invoices_from_page(driver, target_folder, cnpj):
             and r.find_elements(By.XPATH, ".//button[contains(., 'Baixar agora')]")
         ]
         if not pending:
-            print("✅ No pending invoices")
+            print("No pending invoices")
             return
 
         for i, invoice in enumerate(pending, 1):
-            print(f"📌 Invoice {i}/{len(pending)}")
+            print(f"Fatura {i}/{len(pending)}")
             for attempt in range(2):
                 try:
                     close_generic_popups(driver)
@@ -152,14 +151,14 @@ def download_invoices_from_page(driver, target_folder, cnpj):
                         break
 
                 except ElementClickInterceptedException:
-                    print("⚠️ Click blocked, retrying...")
+                    print("Click blocked, retrying...")
                     close_generic_popups(driver)
                 except Exception as e:
-                    print("⚠️ Error:", type(e).__name__, e)
+                    print("Error:", type(e).__name__, e)
                     break
 
     except Exception as e:
-        print("❌ General failure:", type(e).__name__, e)
+        print("General failure:", type(e).__name__, e)
 
 def download_all_paginated_invoices(driver, base_folder, cnpj):
     target_folder = os.path.join(base_folder, "Vivo", cnpj.replace(".", "").replace("/", "-"))
@@ -171,7 +170,7 @@ def download_all_paginated_invoices(driver, base_folder, cnpj):
             (By.CSS_SELECTOR, "div[data-test-dont-have-account-message-wireline]")
         ))
         driver.find_element(By.CSS_SELECTOR, "button[data-test-redirect-dashboard-button]").click()
-        print("✅ No invoices available")
+        print("No invoices available")
         return
     except TimeoutException:
         pass
@@ -185,7 +184,7 @@ def download_all_paginated_invoices(driver, base_folder, cnpj):
 
     page = 1
     while True:
-        print(f"📄 Page {page}")
+        print(f"Page {page}")
         download_invoices_from_page(driver, target_folder, cnpj)
         close_generic_popups(driver)
 

@@ -20,22 +20,22 @@ def main():
     senha = os.getenv("LOGIN_SENHA")
 
     if not usuario or not senha:
-        print("❌ LOGIN_USUARIO ou LOGIN_SENHA não encontrados no .env")
+        print("LOGIN_USUARIO ou LOGIN_SENHA não encontrados no .env")
         return
 
     pasta_download_base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "faturas")
     driver = None
     try:
         driver = create_driver(pasta_download_base)
-        print("🚀 Driver criado, iniciando execução.")
+        print("Driver criado, iniciando execução.")
 
-        print("🔑 Realizando login...")
+        print("Realizando login...")
         login_page = LoginPage(driver)
         login_page.open_login_page()
         login_page.perform_login(usuario, senha)
-        print("✅ Login realizado com sucesso.")
+        print("Login realizado com sucesso.")
 
-        print("👥 Iniciando processamento de CNPJs...")
+        print("Iniciando processamento de CNPJs...")
         customer_selector = CustomerSelectorPage(driver)
         cnpj_logger = CnpjLogger()
 
@@ -43,49 +43,47 @@ def main():
         lista_cnpjs = customer_selector.listar_cnpjs_visiveis()
         
         if not lista_cnpjs:
-            print("⚠️ NENHUM CNPJ encontrado na lista. Abortando.")
+            print("NENHUM CNPJ encontrado na lista. Abortando.")
             customer_selector.fechar_lista_de_cnpjs()
             return
 
-        print(f"✅ Encontrados {len(lista_cnpjs)} CNPJs para processar: {lista_cnpjs}")
+        print(f"Encontrados {len(lista_cnpjs)} CNPJs para processar: {lista_cnpjs}")
 
         for cnpj_atual in lista_cnpjs:
-            print(f"\n--- 🔄 Processando CNPJ: {cnpj_atual} ---")
+            print(f"\n--- Processando CNPJ: {cnpj_atual} ---")
             
             if not customer_selector.clicar_cnpj_por_texto(cnpj_atual):
-                print(f"⚠️ Não foi possível selecionar o CNPJ {cnpj_atual}. Pulando para o próximo.")
+                print(f"Não foi possível selecionar o CNPJ {cnpj_atual}. Pulando para o próximo.")
                 
                 try:
                     customer_selector.abrir_lista_de_cnpjs()
                 except TimeoutException:
-                    print("⚠️ Timeout ao tentar reabrir a lista de CNPJs. Tentando continuar...")
+                    print("Timeout ao tentar reabrir a lista de CNPJs. Tentando continuar...")
 
                 continue
             
             cnpj_logger.registrar(cnpj_atual)
-            print(f"✅ CNPJ registrado no log: {cnpj_atual}")
+            print(f"CNPJ registrado no log: {cnpj_atual}")
 
             home_page = HomePage(driver)
 
-            # VERIFICA SE O ITEM 'ACESSAR FATURAS' EXISTE
             if not home_page.verificar_opcao_acessar_faturas():
-                print(f"⚠️ CNPJ {cnpj_atual} não possui opção 'Acessar faturas'. Pulando para o próximo.")
+                print(f"CNPJ {cnpj_atual} não possui opção 'Acessar faturas'. Pulando para o próximo.")
                 
                 driver.back()
                 time.sleep(2)
                 customer_selector.abrir_lista_de_cnpjs()
                 continue
 
-            # Se passou na verificação, acessar faturas normalmente
             home_page.acessar_faturas()
 
-            print("⏳ Aguardando página de faturas carregar...")
+            print("Aguardando página de faturas carregar...")
             time.sleep(3)
 
-            print("📄 Iniciando download das faturas...")
+            print("Iniciando download das faturas...")
             download_all_paginated_invoices(driver, pasta_download_base, cnpj_atual)
             
-            print("⏳ Pausando para garantir finalização do download e navegação de volta...")
+            print("Pausando para garantir finalização do download e navegação de volta...")
             time.sleep(5)
             
             driver.back()
@@ -94,15 +92,15 @@ def main():
             customer_selector.abrir_lista_de_cnpjs()
 
     except (Exception, InvalidSessionIdException) as e:
-        print(f"❌ Erro inesperado na execução: {e}")
+        print(f"Erro inesperado na execução: {e}")
         if isinstance(e, InvalidSessionIdException):
-            print("❗ A sessão do navegador foi encerrada inesperadamente. Verifique a estabilidade da conexão e os recursos do sistema.")
+            print("A sessão do navegador foi encerrada inesperadamente. Verifique a estabilidade da conexão e os recursos do sistema.")
 
     finally:
         if driver:
-            input("✅ Pressione Enter para sair e fechar o navegador...")
+            input("Pressione Enter para sair e fechar o navegador...")
             driver.quit()
-            print("👋 Navegador fechado, script finalizado.")
+            print("Navegador fechado, script finalizado.")
 
 if __name__ == "__main__":
     main()
