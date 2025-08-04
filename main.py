@@ -11,7 +11,7 @@ from pages.login_page import LoginPage
 from pages.home_page import HomePage
 from customer_selector.customer_selector_page import CustomerSelectorPage
 from customer_selector.cnpj_logger import CnpjLogger
-from utils.faturas_downloader import baixar_todas_faturas_paginadas
+from utils.faturas_downloader import download_all_paginated_invoices
 
 def main():
     load_dotenv()
@@ -66,13 +66,24 @@ def main():
             print(f"✅ CNPJ registrado no log: {cnpj_atual}")
 
             home_page = HomePage(driver)
+
+            # VERIFICA SE O ITEM 'ACESSAR FATURAS' EXISTE
+            if not home_page.verificar_opcao_acessar_faturas():
+                print(f"⚠️ CNPJ {cnpj_atual} não possui opção 'Acessar faturas'. Pulando para o próximo.")
+                
+                driver.back()
+                time.sleep(2)
+                customer_selector.abrir_lista_de_cnpjs()
+                continue
+
+            # Se passou na verificação, acessar faturas normalmente
             home_page.acessar_faturas()
 
             print("⏳ Aguardando página de faturas carregar...")
             time.sleep(3)
 
             print("📄 Iniciando download das faturas...")
-            baixar_todas_faturas_paginadas(driver, pasta_download_base, cnpj_atual)
+            download_all_paginated_invoices(driver, pasta_download_base, cnpj_atual)
             
             print("⏳ Pausando para garantir finalização do download e navegação de volta...")
             time.sleep(5)

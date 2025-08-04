@@ -6,8 +6,8 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 import os
 
-# Importa a constante PASTA_DOWNLOAD_TEMP do faturas_downloader
-from utils.faturas_downloader import PASTA_DOWNLOAD_TEMP
+# Importa a constante TEMP_DOWNLOAD_FOLDER do faturas_downloader
+from utils.faturas_downloader import TEMP_DOWNLOAD_FOLDER
 
 def create_driver(pasta_download_base):
     options = Options()
@@ -15,7 +15,7 @@ def create_driver(pasta_download_base):
 
     # A pasta de download temporário já está definida no faturas_downloader.py
     # e agora será usada aqui para garantir consistência.
-    download_dir = PASTA_DOWNLOAD_TEMP
+    download_dir = TEMP_DOWNLOAD_FOLDER
 
     # Garante que o diretório de download temporário existe
     os.makedirs(download_dir, exist_ok=True)
