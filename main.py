@@ -1,8 +1,10 @@
+# main.py
+
 from dotenv import load_dotenv
 import os
 import time
 
-from selenium.common.exceptions import NoSuchElementException # Importação Adicionada!
+from selenium.common.exceptions import NoSuchElementException, InvalidSessionIdException, TimeoutException
 
 from utils.driver_factory import create_driver
 from pages.login_page import LoginPage
@@ -22,10 +24,11 @@ def main():
         return
 
     pasta_download_base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "faturas")
-    driver = create_driver(pasta_download_base)
-    print("🚀 Driver criado, iniciando execução.")
-
+    driver = None
     try:
+        driver = create_driver(pasta_download_base)
+        print("🚀 Driver criado, iniciando execução.")
+
         print("🔑 Realizando login...")
         login_page = LoginPage(driver)
         login_page.open_login_page()
@@ -38,10 +41,10 @@ def main():
 
         customer_selector.abrir_lista_de_cnpjs()
         lista_cnpjs = customer_selector.listar_cnpjs_visiveis()
-        customer_selector.fechar_lista_de_cnpjs()
-
+        
         if not lista_cnpjs:
             print("⚠️ NENHUM CNPJ encontrado na lista. Abortando.")
+            customer_selector.fechar_lista_de_cnpjs()
             return
 
         print(f"✅ Encontrados {len(lista_cnpjs)} CNPJs para processar: {lista_cnpjs}")
@@ -49,11 +52,14 @@ def main():
         for cnpj_atual in lista_cnpjs:
             print(f"\n--- 🔄 Processando CNPJ: {cnpj_atual} ---")
             
-            customer_selector.abrir_lista_de_cnpjs()
-            
             if not customer_selector.clicar_cnpj_por_texto(cnpj_atual):
                 print(f"⚠️ Não foi possível selecionar o CNPJ {cnpj_atual}. Pulando para o próximo.")
-                customer_selector.fechar_lista_de_cnpjs()
+                
+                try:
+                    customer_selector.abrir_lista_de_cnpjs()
+                except TimeoutException:
+                    print("⚠️ Timeout ao tentar reabrir a lista de CNPJs. Tentando continuar...")
+
                 continue
             
             cnpj_logger.registrar(cnpj_atual)
@@ -65,22 +71,27 @@ def main():
             print("⏳ Aguardando página de faturas carregar...")
             time.sleep(3)
 
-            print("📄 Iniciando download das faturas do mês atual e anterior...")
+            print("📄 Iniciando download das faturas...")
             baixar_todas_faturas_paginadas(driver, pasta_download_base, cnpj_atual)
             
-            print("⏳ Pausando para garantir finalização do download...")
-            time.sleep(3)
+            print("⏳ Pausando para garantir finalização do download e navegação de volta...")
+            time.sleep(5)
             
             driver.back()
             time.sleep(2)
+            
+            customer_selector.abrir_lista_de_cnpjs()
 
-    except (Exception, NoSuchElementException) as e:
+    except (Exception, InvalidSessionIdException) as e:
         print(f"❌ Erro inesperado na execução: {e}")
+        if isinstance(e, InvalidSessionIdException):
+            print("❗ A sessão do navegador foi encerrada inesperadamente. Verifique a estabilidade da conexão e os recursos do sistema.")
 
     finally:
-        input("✅ Pressione Enter para sair e fechar o navegador...")
-        driver.quit()
-        print("👋 Navegador fechado, script finalizado.")
+        if driver:
+            input("✅ Pressione Enter para sair e fechar o navegador...")
+            driver.quit()
+            print("👋 Navegador fechado, script finalizado.")
 
 if __name__ == "__main__":
     main()
