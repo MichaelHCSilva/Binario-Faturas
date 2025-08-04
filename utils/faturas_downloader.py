@@ -53,20 +53,31 @@ def process_invoice_menu_button(driver, target_folder):
             EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-test-open-dropdown-button='true']"))
         )
         menu_btn.click()
-        WebDriverWait(driver, 4).until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, "div.dropdown-menu.show"))
+        dropdown = WebDriverWait(driver, 4).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, "div.dropdown-menu"))
         )
+
         before_files = set(os.listdir(TEMP_DOWNLOAD_FOLDER))
-        pdf_btn = driver.find_element(By.XPATH, "//button[contains(., 'Boleto (.pdf)')]")
-        pdf_btn.click()
-        pdf_name = wait_for_new_file(TEMP_DOWNLOAD_FOLDER, before_files, extension=".pdf")
-        if pdf_name:
-            pdf_path = os.path.join(TEMP_DOWNLOAD_FOLDER, pdf_name)
-            wait_for_download_complete(pdf_path)
-            shutil.move(pdf_path, os.path.join(target_folder, f"vivo_{pdf_name}"))
-            print(f"✅ Fatura PDF movida: {pdf_name}")
+
+        # Corrigido: procurar pelo link com texto "Boleto (.pdf)"
+        links = dropdown.find_elements(By.CSS_SELECTOR, "a")
+        boleto_link = next((a for a in links if "Boleto (.pdf)" in a.text), None)
+
+        if boleto_link:
+            boleto_link.click()
+            pdf_name = wait_for_new_file(TEMP_DOWNLOAD_FOLDER, before_files, extension=".pdf")
+            if pdf_name:
+                pdf_path = os.path.join(TEMP_DOWNLOAD_FOLDER, pdf_name)
+                wait_for_download_complete(pdf_path)
+                shutil.move(pdf_path, os.path.join(target_folder, f"vivo_{pdf_name}"))
+                print(f"✅ Fatura PDF movida: {pdf_name}")
+        else:
+            print("⚠️ Link 'Boleto (.pdf)' não encontrado no menu suspenso.")
+
     except Exception as e:
         print(f"⚠️ Erro ao tentar baixar via menu suspenso: {type(e).__name__} - {e}")
+
+
 
 def download_invoices_from_page(driver, target_folder, cnpj):
     try:
