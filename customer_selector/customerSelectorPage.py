@@ -15,11 +15,11 @@ class CustomerSelectorPage:
             (By.XPATH, "//button[contains(@class, 'customer-select-desktop')]")
         ]
         
-        self.lista_cnpjs_locator = (By.CSS_SELECTOR, "li.list-item-wrapper.only-title h1.title")
+        self.list_cnpjs_locator = (By.CSS_SELECTOR, "li.list-item-wrapper.only-title h1.title")
         
         self.backdrop_fechar_locator = (By.CSS_SELECTOR, "div.drawer__backdrop")
 
-    def encontrar_elemento_por_varios_locators(self, locators, is_panel=False):
+    def find_element(self, locators, is_panel=False):
         for locator in locators:
             try:
                 if is_panel:
@@ -34,11 +34,11 @@ class CustomerSelectorPage:
                 continue
         raise NoSuchElementException("Nenhum localizador da lista encontrou o elemento.")
 
-    def abrir_lista_de_cnpjs(self):
+    def open_menu(self):
         print("Abrindo menu de clientes...")
         try:
             print("Procurando pelo botão do menu...")
-            botao_menu = self.encontrar_elemento_por_varios_locators(self.botoes_menu_locators)
+            botao_menu = self.find_element(self.botoes_menu_locators)
             
             try:
                 botao_menu.click()
@@ -46,14 +46,14 @@ class CustomerSelectorPage:
                 self.driver.execute_script("arguments[0].click();", botao_menu)
 
             print("Botão do menu clicado. Esperando a lista de CNPJs...")
-            self.wait.until(EC.visibility_of_element_located(self.lista_cnpjs_locator))
+            self.wait.until(EC.visibility_of_element_located(self.list_cnpjs_locator))
             print("Lista de CNPJs está visível. Prosseguindo.")
 
         except Exception as e:
             print(f"Erro ao abrir menu de clientes: {e}")
             raise
 
-    def fechar_lista_de_cnpjs(self):
+    def close_menu(self):
         print("Tentando fechar o menu de clientes...")
         try:
             backdrop = self.wait.until(EC.element_to_be_clickable(self.backdrop_fechar_locator))
@@ -63,10 +63,10 @@ class CustomerSelectorPage:
         except (TimeoutException, NoSuchElementException, Exception):
             print("Menu de clientes já estava fechado ou o backdrop não foi encontrado.")
 
-    def listar_cnpjs_visiveis(self):
+    def get_cnpjs(self):
         print("Capturando lista de CNPJs visíveis...")
         try:
-            elementos = self.wait.until(EC.presence_of_all_elements_located(self.lista_cnpjs_locator))
+            elementos = self.wait.until(EC.presence_of_all_elements_located(self.list_cnpjs_locator))
             cnpjs = [el.text.strip() for el in elementos if el.text.strip()]
             print(f"{len(cnpjs)} CNPJs capturados: {cnpjs}")
             return cnpjs
@@ -74,31 +74,31 @@ class CustomerSelectorPage:
             print(f"Erro ao capturar CNPJs: {e}")
             return []
 
-    def clicar_cnpj_por_texto(self, cnpj_texto):
-        print(f"Tentando clicar no CNPJ: {cnpj_texto}")
+    def click_by_text(self, cnpj_text ):
+        print(f"Tentando clicar no CNPJ: {cnpj_text }")
         try:
-            lista_cnpjs = self.wait.until(EC.presence_of_all_elements_located(self.lista_cnpjs_locator))
-            for el in lista_cnpjs:
-                if el.text.strip() == cnpj_texto:
+            cnpj_list  = self.wait.until(EC.presence_of_all_elements_located(self.list_cnpjs_locator))
+            for el in cnpj_list :
+                if el.text.strip() == cnpj_text :
                     el.click()
-                    print(f"CNPJ '{cnpj_texto}' clicado.")
+                    print(f"CNPJ '{cnpj_text }' clicado.")
                     time.sleep(2)
                     return True
-            print(f"CNPJ '{cnpj_texto}' não encontrado na lista.")
+            print(f"CNPJ '{cnpj_text }' não encontrado na lista.")
             return False
         except Exception as e:
-            print(f"Erro ao tentar clicar no CNPJ '{cnpj_texto}': {e}")
+            print(f"Erro ao tentar clicar no CNPJ '{cnpj_text }': {e}")
             return False
 
-    def clicar_primeiro_cnpj_da_lista(self):
+    def click_first_item(self):
         try:
             print("Tentando clicar no primeiro CNPJ da lista...")
-            primeiro = self.wait.until(EC.element_to_be_clickable(self.lista_cnpjs_locator))
-            cnpj_texto = primeiro.text.strip()
-            primeiro.click()
-            print(f"Primeiro CNPJ clicado: {cnpj_texto}")
+            first_cnpj = self.wait.until(EC.element_to_be_clickable(self.list_cnpjs_locator))
+            cnpj_text  = first_cnpj.text.strip()
+            first_cnpj()
+            print(f"Primeiro CNPJ clicado: {cnpj_text }")
             time.sleep(2)
-            return cnpj_texto
+            return cnpj_text 
         except Exception as e:
             print(f"Erro ao clicar no primeiro CNPJ da lista: {e}")
             return None

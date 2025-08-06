@@ -5,6 +5,9 @@ from selenium.common.exceptions import (
     StaleElementReferenceException, TimeoutException,
     NoSuchElementException, ElementClickInterceptedException
 )
+
+from utils.popUpHandler import PopupHandler
+
 import time
 import os
 import shutil
@@ -95,7 +98,7 @@ def download_invoices_from_page(driver, target_folder, cnpj):
             and r.find_elements(By.XPATH, ".//button[contains(., 'Baixar agora')]")
         ]
         if not pending:
-            print("No pending invoices")
+            print("Nenhuma fatura pendente")
             return
 
         for i, invoice in enumerate(pending, 1):
@@ -170,7 +173,7 @@ def download_all_paginated_invoices(driver, base_folder, cnpj):
             (By.CSS_SELECTOR, "div[data-test-dont-have-account-message-wireline]")
         ))
         driver.find_element(By.CSS_SELECTOR, "button[data-test-redirect-dashboard-button]").click()
-        print("No invoices available")
+        print("Nenhuma fatura disponível")
         return
     except TimeoutException:
         pass

@@ -6,12 +6,13 @@ import time
 
 from selenium.common.exceptions import NoSuchElementException, InvalidSessionIdException, TimeoutException
 
-from utils.driver_factory import create_driver
-from pages.login_page import LoginPage
-from pages.home_page import HomePage
-from customer_selector.customer_selector_page import CustomerSelectorPage
-from customer_selector.cnpj_logger import CnpjLogger
-from utils.faturas_downloader import download_all_paginated_invoices
+from utils.driverFactory import create_driver
+from pages.loginPage import LoginPage
+from pages.homePage import HomePage
+from customer_selector.customerSelectorPage import CustomerSelectorPage
+from customer_selector.cnpjLogger import CnpjLogger
+from utils.faturasDownloader import download_all_paginated_invoices
+from utils.popUpHandler import PopupHandler  # ✅ Novo
 
 def main():
     load_dotenv()
@@ -25,9 +26,12 @@ def main():
 
     pasta_download_base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "faturas")
     driver = None
+
     try:
         driver = create_driver(pasta_download_base)
         print("Driver criado, iniciando execução.")
+
+        popup_handler = PopupHandler(driver)  # ✅ Criando handler do popup
 
         print("Realizando login...")
         login_page = LoginPage(driver)
@@ -39,41 +43,46 @@ def main():
         customer_selector = CustomerSelectorPage(driver)
         cnpj_logger = CnpjLogger()
 
-        customer_selector.abrir_lista_de_cnpjs()
-        lista_cnpjs = customer_selector.listar_cnpjs_visiveis()
-        
-        if not lista_cnpjs:
+        customer_selector.open_menu()
+        cnpj_list = customer_selector.get_cnpjs()
+
+        if not cnpj_list:
             print("NENHUM CNPJ encontrado na lista. Abortando.")
-            customer_selector.fechar_lista_de_cnpjs()
+            customer_selector.close_menu()
             return
 
-        print(f"Encontrados {len(lista_cnpjs)} CNPJs para processar: {lista_cnpjs}")
+        print(f"Encontrados {len(cnpj_list)} CNPJs para processar: {cnpj_list}")
 
-        for cnpj_atual in lista_cnpjs:
+        for cnpj_atual in cnpj_list:
             print(f"\n--- Processando CNPJ: {cnpj_atual} ---")
-            
-            if not customer_selector.clicar_cnpj_por_texto(cnpj_atual):
+
+            popup_handler.force_remove_qualtrics_popup()  # ✅ Antes da tentativa de clicar
+
+            if not customer_selector.click_by_text(cnpj_atual):
                 print(f"Não foi possível selecionar o CNPJ {cnpj_atual}. Pulando para o próximo.")
-                
+
                 try:
-                    customer_selector.abrir_lista_de_cnpjs()
+                    customer_selector.open_menu()
                 except TimeoutException:
                     print("Timeout ao tentar reabrir a lista de CNPJs. Tentando continuar...")
 
                 continue
-            
+
             cnpj_logger.registrar(cnpj_atual)
             print(f"CNPJ registrado no log: {cnpj_atual}")
 
             home_page = HomePage(driver)
 
+            popup_handler.force_remove_qualtrics_popup()  # ✅ Antes de verificar faturas
+
             if not home_page.verificar_opcao_acessar_faturas():
                 print(f"CNPJ {cnpj_atual} não possui opção 'Acessar faturas'. Pulando para o próximo.")
-                
                 driver.back()
                 time.sleep(2)
-                customer_selector.abrir_lista_de_cnpjs()
+                customer_selector.open_menu()
                 continue
+
+            popup_handler.force_remove_qualtrics_popup()  # ✅ Antes de tentar acessar faturas
 
             home_page.acessar_faturas()
 
@@ -82,14 +91,13 @@ def main():
 
             print("Iniciando download das faturas...")
             download_all_paginated_invoices(driver, pasta_download_base, cnpj_atual)
-            
+
             print("Pausando para garantir finalização do download e navegação de volta...")
             time.sleep(5)
-            
+
             driver.back()
             time.sleep(2)
-            
-            customer_selector.abrir_lista_de_cnpjs()
+            customer_selector.open_menu()
 
     except (Exception, InvalidSessionIdException) as e:
         print(f"Erro inesperado na execução: {e}")

@@ -1,4 +1,4 @@
-# utils/driver_factory.py
+# utils/driverFactory.py
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -6,7 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 import os
 
-from utils.faturas_downloader import TEMP_DOWNLOAD_FOLDER
+from utils.faturasDownloader import TEMP_DOWNLOAD_FOLDER
 
 def create_driver(pasta_download_base):
     options = Options()

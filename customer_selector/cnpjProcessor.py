@@ -6,7 +6,7 @@ class CnpjProcessor:
         self.logger = logger
 
     def processar_todos(self, acao_por_cnpj):
-        cnpjs = self.selector.listar_cnpjs_visiveis()
+        cnpjs = self.selector.get_cnpjs()
         print(f"{len(cnpjs)} CNPJs encontrados.") 
 
         for cnpj in cnpjs:
@@ -15,10 +15,10 @@ class CnpjProcessor:
                 continue
 
             print(f"\nProcessando: {cnpj}")
-            self.selector.abrir_lista_de_cnpjs()
+            self.selector.open_menu()
             time.sleep(1)
 
-            if self.selector.clicar_cnpj_por_texto(cnpj):
+            if self.selector.click_by_text(cnpj):
                 acao_por_cnpj(cnpj)
                 self.logger.registrar(cnpj)
                 time.sleep(2)
