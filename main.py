@@ -90,7 +90,8 @@ def main():
             time.sleep(3)
 
             print("Iniciando download das faturas...")
-            download_all_paginated_invoices(driver, pasta_download_base, cnpj_atual)
+            # ✅ Ajustado: passa popup_handler como argumento
+            download_all_paginated_invoices(driver, popup_handler, pasta_download_base, cnpj_atual)
 
             print("Pausando para garantir finalização do download e navegação de volta...")
             time.sleep(5)

@@ -8,7 +8,6 @@ from selenium.common.exceptions import (
 
 from utils.popUpHandler import PopupHandler
 
-import time
 import os
 import shutil
 import zipfile
@@ -17,46 +16,28 @@ TEMP_DOWNLOAD_FOLDER = os.path.join(
     os.path.expanduser("~"), "OneDrive", "Documentos", "Binario-Faturas", "faturas_temp"
 )
 
-def close_generic_popups(driver, max_wait=2):
-    selectors = [
-        "button[data-qsi-creative-button-type='close']",
-        "button[data-test-dialog-button='cancelar-download']"
-    ]
-    for sel in selectors:
-        try:
-            btn = WebDriverWait(driver, max_wait).until(EC.element_to_be_clickable((By.CSS_SELECTOR, sel)))
-            btn.click()
-            print("Popup closed:", sel)
-            return True
-        except TimeoutException:
-            continue
-    return False
-
 def wait_for_new_file(folder, previous_files, timeout=20, extension=".pdf"):
-    start = time.time()
-    while time.time() - start < timeout:
-        new_files = set(os.listdir(folder)) - previous_files
-        for f in new_files:
-            if f.endswith(extension) and not f.endswith(".crdownload"):
-                return f
-        time.sleep(0.2)
-    return None
+    return WebDriverWait(
+        None, timeout, poll_frequency=0.2
+    ).until(
+        lambda _: next(
+            (f for f in (set(os.listdir(folder)) - previous_files)
+             if f.endswith(extension) and not f.endswith(".crdownload")), None
+        )
+    )
 
 def wait_for_download_complete(path, timeout=20):
-    start = time.time()
-    while time.time() - start < timeout:
-        if os.path.exists(path) and not path.endswith(".crdownload"):
-            return True
-        time.sleep(0.2)
-    return False
+    return WebDriverWait(
+        None, timeout, poll_frequency=0.2
+    ).until(lambda _: os.path.exists(path) and not path.endswith(".crdownload"))
 
-def process_invoice_menu_button(driver, target_folder):
+def process_invoice_menu_button(driver, popup_handler, target_folder):
     try:
-        menu_btn = WebDriverWait(driver, 4).until(
+        menu_btn = WebDriverWait(driver, 4, poll_frequency=0.2).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-test-open-dropdown-button='true']"))
         )
         menu_btn.click()
-        dropdown = WebDriverWait(driver, 4).until(
+        dropdown = WebDriverWait(driver, 4, poll_frequency=0.2).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, "div.dropdown-menu"))
         )
 
@@ -80,16 +61,15 @@ def process_invoice_menu_button(driver, target_folder):
         print(f"Erro ao tentar baixar via menu suspenso: {type(e).__name__} - {e}")
 
 
-
-def download_invoices_from_page(driver, target_folder, cnpj):
+def download_invoices_from_page(driver, popup_handler, target_folder, cnpj):
     try:
         try:
-            rows = WebDriverWait(driver, 6).until(
+            rows = WebDriverWait(driver, 6, poll_frequency=0.2).until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.mve-grid-row"))
             )
         except TimeoutException:
             print("Nenhum grid de faturas encontrado, tentando menu suspenso.")
-            process_invoice_menu_button(driver, target_folder)
+            process_invoice_menu_button(driver, popup_handler, target_folder)
             return
 
         pending = [
@@ -103,13 +83,14 @@ def download_invoices_from_page(driver, target_folder, cnpj):
 
         for i, invoice in enumerate(pending, 1):
             print(f"Fatura {i}/{len(pending)}")
-            for attempt in range(2):
+            attempts = 0
+            while attempts < 3:
                 try:
-                    close_generic_popups(driver)
+                    popup_handler.close_known_popups()
                     btn = invoice.find_element(By.XPATH, ".//button[contains(., 'Baixar agora')]")
                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
-                    WebDriverWait(driver, 3).until(EC.element_to_be_clickable(btn)).click()
-                    WebDriverWait(driver, 4).until(
+                    WebDriverWait(driver, 3, poll_frequency=0.2).until(EC.element_to_be_clickable(btn)).click()
+                    WebDriverWait(driver, 4, poll_frequency=0.2).until(
                         EC.visibility_of_element_located((By.CSS_SELECTOR, "div.dropdown-menu.show"))
                     )
 
@@ -153,23 +134,26 @@ def download_invoices_from_page(driver, target_folder, cnpj):
                         shutil.move(pdf_path, os.path.join(target_folder, f"vivo_{customer}_{due}.pdf"))
                         break
 
-                except ElementClickInterceptedException:
-                    print("Click blocked, retrying...")
-                    close_generic_popups(driver)
+                except (ElementClickInterceptedException, StaleElementReferenceException):
+                    print("Click bloqueado ou elemento obsoleto, tentando novamente...")
+                    popup_handler.close_known_popups()
+                    driver.execute_script("window.scrollBy(0, 50);")
+                    attempts += 1
                 except Exception as e:
-                    print("Error:", type(e).__name__, e)
+                    print("Erro inesperado ao baixar fatura:", type(e).__name__, e)
                     break
 
     except Exception as e:
-        print("General failure:", type(e).__name__, e)
+        print("Falha geral:", type(e).__name__, e)
 
-def download_all_paginated_invoices(driver, base_folder, cnpj):
+
+def download_all_paginated_invoices(driver, popup_handler, base_folder, cnpj):
     target_folder = os.path.join(base_folder, "Vivo", cnpj.replace(".", "").replace("/", "-"))
     os.makedirs(target_folder, exist_ok=True)
     os.makedirs(TEMP_DOWNLOAD_FOLDER, exist_ok=True)
 
     try:
-        WebDriverWait(driver, 4).until(EC.presence_of_element_located(
+        WebDriverWait(driver, 4, poll_frequency=0.2).until(EC.presence_of_element_located(
             (By.CSS_SELECTOR, "div[data-test-dont-have-account-message-wireline]")
         ))
         driver.find_element(By.CSS_SELECTOR, "button[data-test-redirect-dashboard-button]").click()
@@ -179,7 +163,7 @@ def download_all_paginated_invoices(driver, base_folder, cnpj):
         pass
 
     try:
-        first = WebDriverWait(driver, 6).until(
+        first = WebDriverWait(driver, 6, poll_frequency=0.2).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "div.mve-grid-row:first-of-type div[data-test-secondary-info] span"))
         ).text.strip()
     except Exception:
@@ -188,11 +172,11 @@ def download_all_paginated_invoices(driver, base_folder, cnpj):
     page = 1
     while True:
         print(f"Page {page}")
-        download_invoices_from_page(driver, target_folder, cnpj)
-        close_generic_popups(driver)
+        download_invoices_from_page(driver, popup_handler, target_folder, cnpj)
+        popup_handler.close_known_popups()
 
         try:
-            btn = WebDriverWait(driver, 5).until(
+            btn = WebDriverWait(driver, 5, poll_frequency=0.2).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "li.button--pagination-next > button"))
             )
             if not btn.is_enabled():
@@ -200,7 +184,7 @@ def download_all_paginated_invoices(driver, base_folder, cnpj):
             driver.execute_script("arguments[0].scrollIntoView(false);", btn)
             btn.click()
 
-            WebDriverWait(driver, 8).until(
+            WebDriverWait(driver, 8, poll_frequency=0.2).until(
                 lambda d: d.find_element(By.CSS_SELECTOR, "div.mve-grid-row:first-of-type div[data-test-secondary-info] span").text.strip() != first
             )
             first = driver.find_element(By.CSS_SELECTOR, "div.mve-grid-row:first-of-type div[data-test-secondary-info] span").text.strip()
