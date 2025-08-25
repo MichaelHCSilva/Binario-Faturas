@@ -1,9 +1,9 @@
 import time
 from selenium.common.exceptions import TimeoutException
 from pages.homePage import HomePage
-from customer.customerSelectorPage import CustomerSelectorPage
+from customer.customerSelectorVivo import CustomerSelectorPage
 from customer.cnpjLogger import CnpjLogger
-from utils.faturasDownloader import download_all_paginated_invoices
+from utils.downloadFaturaVivo import download_all_paginated_invoices
 from utils.sessionManager import ensure_logged_in
 
 
@@ -30,6 +30,7 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
                 popup_handler.force_remove_qualtrics_popup()
 
                 if ensure_logged_in(driver, login_page, usuario, senha):
+                    customer_selector.open_menu()
                     continue
 
                 if not customer_selector.click_by_text(cnpj_atual):
@@ -61,16 +62,18 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
                 time.sleep(3)
 
                 download_all_paginated_invoices(driver, popup_handler, pasta_download_base, cnpj_atual)
+
                 time.sleep(2)
                 driver.back()
                 time.sleep(2)
                 customer_selector.open_menu()
 
                 sucesso = True
+
             except Exception as e:
                 print(f"Erro processando {cnpj_atual}: {e}")
                 tentativas += 1
                 time.sleep(3)
 
         if not sucesso:
-            print(f"⚠️ Falha após 3 tentativas no CNPJ {cnpj_atual}. Pulando para o próximo.")
+            print(f"Falha após 3 tentativas no CNPJ {cnpj_atual}. Pulando para o próximo.")

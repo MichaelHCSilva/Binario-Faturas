@@ -3,7 +3,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from utils.popUpHandler import PopupHandler
+from utils.popUpClaro import PopupHandler
 
 class HomePage:
     def __init__(self, driver, timeout=10):
