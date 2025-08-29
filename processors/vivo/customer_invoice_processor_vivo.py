@@ -1,27 +1,26 @@
+import os
 import time
+import logging
 from selenium.common.exceptions import TimeoutException
-from pages.homePage import HomePage
-from customer.customerSelectorVivo import CustomerSelectorPage
-from customer.cnpjLogger import CnpjLogger
-from utils.downloadFaturaVivo import download_all_paginated_invoices
-from utils.sessionManager import ensure_logged_in
+from pages.claro.claro_home_page import HomePage
+from pages.vivo.customer_selector_page_vivo import CustomerSelectorPage
+from services.vivo_invoice_download_service import download_all_paginated_invoices
+from utils.session_manager import ensure_logged_in
 
-
-def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_download_base):
+def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_download_base, skip_existing=True):
     customer_selector = CustomerSelectorPage(driver)
-    cnpj_logger = CnpjLogger()
 
     customer_selector.open_menu()
     cnpjs = customer_selector.get_cnpjs()
     if not cnpjs:
-        print("Nenhum CNPJ encontrado. Abortando.")
+        logging.warning("Nenhum CNPJ encontrado. Abortando.")
         customer_selector.close_menu()
         return
 
-    print(f"Encontrados {len(cnpjs)} CNPJs: {cnpjs}")
+    logging.info(f"Encontrados {len(cnpjs)} CNPJs.")
 
     for cnpj_atual in cnpjs:
-        print(f"\n--- Processando CNPJ: {cnpj_atual} ---")
+        logging.info(f"--- Processando CNPJ: {cnpj_atual} ---")
         tentativas = 0
         sucesso = False
 
@@ -34,23 +33,20 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
                     continue
 
                 if not customer_selector.click_by_text(cnpj_atual):
-                    print(f"Não foi possível selecionar {cnpj_atual}. Tentativa {tentativas+1}")
                     tentativas += 1
+                    logging.warning(f"Não foi possível selecionar {cnpj_atual}. Tentativa {tentativas}")
                     time.sleep(2)
                     try:
                         customer_selector.open_menu()
                     except TimeoutException:
-                        print("Timeout ao tentar reabrir a lista de CNPJs.")
+                        logging.warning("Timeout ao tentar reabrir a lista de CNPJs.")
                     continue
-
-                cnpj_logger.registrar(cnpj_atual)
-                print(f"CNPJ registrado: {cnpj_atual}")
 
                 home_page = HomePage(driver)
                 popup_handler.force_remove_qualtrics_popup()
 
                 if not home_page.verificar_opcao_acessar_faturas():
-                    print(f"{cnpj_atual} não possui 'Acessar faturas'. Pulando...")
+                    logging.info(f"{cnpj_atual} não possui 'Acessar faturas'. Pulando...")
                     driver.back()
                     time.sleep(2)
                     customer_selector.open_menu()
@@ -59,9 +55,15 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
 
                 popup_handler.force_remove_qualtrics_popup()
                 home_page.acessar_faturas()
-                time.sleep(3)
+                time.sleep(2)
 
-                download_all_paginated_invoices(driver, popup_handler, pasta_download_base, cnpj_atual)
+                download_all_paginated_invoices(
+                    driver,
+                    popup_handler,
+                    pasta_download_base,
+                    cnpj_atual,
+                    skip_existing=skip_existing
+                )
 
                 time.sleep(2)
                 driver.back()
@@ -71,9 +73,11 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
                 sucesso = True
 
             except Exception as e:
-                print(f"Erro processando {cnpj_atual}: {e}")
+                import traceback
+                logging.error(f"Erro processando {cnpj_atual}: {e}")
+                logging.error(traceback.format_exc())
                 tentativas += 1
                 time.sleep(3)
 
         if not sucesso:
-            print(f"Falha após 3 tentativas no CNPJ {cnpj_atual}. Pulando para o próximo.")
+            logging.warning(f"Falha após 3 tentativas no CNPJ {cnpj_atual}. Pulando para o próximo.")

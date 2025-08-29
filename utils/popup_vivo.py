@@ -1,4 +1,3 @@
-# utils/interacoes.py
 import logging
 import time
 from selenium.webdriver.chrome.webdriver import WebDriver

@@ -1,4 +1,3 @@
-# utils/driverFactoryClaro.py
 import logging
 import os
 from selenium import webdriver

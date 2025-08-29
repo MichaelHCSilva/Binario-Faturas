@@ -1,4 +1,3 @@
-# sessionManager.py
 import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -26,10 +25,10 @@ def ensure_logged_in(driver, login_page, usuario, senha):
                 EC.presence_of_element_located((By.ID, "login-input"))
             )
             if _primeiro_login:
-                print("🔑 Realizando login inicial...")
+                print("Realizando login inicial...")
                 _primeiro_login = False
             else:
-                print("⚠️ Sessão expirada! Refazendo login (detecção por elemento)...")
+                print("Sessão expirada! Refazendo login (detecção por elemento)...")
 
             login_page.perform_login(usuario, senha)
             time.sleep(3)

@@ -1,11 +1,13 @@
-#downloadFaturaClaro.py
 import os
 import time
 import logging
 from selenium.webdriver.support.ui import WebDriverWait
 
-from utils.downloadUtils import mover_e_copiar_arquivo
-from pages.faturasPendentes import FaturasPendentesPage
+from utils.download_utils import mover_e_copiar_arquivo
+from pages.claro.claro_pending_invoices_page import FaturasPendentesPage
+
+from services.invoice_service import FaturaService
+from models.invoice_table import faturas
 
 logger = logging.getLogger(__name__)
 

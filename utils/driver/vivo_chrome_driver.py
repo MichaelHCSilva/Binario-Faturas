@@ -4,7 +4,7 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 import os
 
-from utils.downloadFaturaVivo import TEMP_DOWNLOAD_FOLDER
+from services.vivo_invoice_download_service import TEMP_DOWNLOAD_FOLDER
 
 def create_driver(pasta_download_base):
     options = Options()

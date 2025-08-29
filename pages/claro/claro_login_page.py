@@ -1,10 +1,9 @@
-# pages/loginClaro.py
 import logging
 import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
 
 logger = logging.getLogger(__name__)
 
@@ -13,19 +12,24 @@ class LoginPage:
         self.driver = driver
         self.url = login_url
         self.wait = WebDriverWait(driver, timeout)
+        self.driver.set_page_load_timeout(120)  # Timeout maior para carregar página
 
-    def open_login_page(self):
+    def open_login_page(self, retries=2):
         logger.info(f"Abrindo página de login: {self.url}...")
-        self.driver.get(self.url)
-
-        try:
-            start = time.time()
-            self.wait.until(EC.presence_of_element_located(
-                (By.XPATH, "//button[contains(@class, 'mdn-Button--primaryInverse') and .//span[text()='Entrar']]")
-            ))
-            logger.info(f"Página de login carregada. Tempo: {time.time()-start:.2f}s")
-        except TimeoutException:
-            logger.warning("Tempo esgotado esperando o botão 'Entrar' - carregamento pode estar lento.")
+        for attempt in range(retries):
+            try:
+                start = time.time()
+                self.driver.get(self.url)
+                self.wait.until(EC.presence_of_element_located(
+                    (By.XPATH, "//button[contains(@class, 'mdn-Button--primaryInverse') and .//span[text()='Entrar']]")
+                ))
+                logger.info(f"Página de login carregada. Tempo: {time.time()-start:.2f}s")
+                break
+            except (TimeoutException, WebDriverException) as e:
+                logger.warning(f"Timeout ou erro ao abrir a página (tentativa {attempt+1}/{retries}): {e}")
+                if attempt == retries - 1:
+                    logger.error("Falha ao abrir a página de login após múltiplas tentativas.", exc_info=True)
+                    raise
 
     def esta_logado(self):
         logger.info("Verificando se o usuário está logado...")

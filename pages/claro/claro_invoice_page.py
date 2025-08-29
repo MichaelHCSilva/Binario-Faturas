@@ -8,19 +8,23 @@ from selenium.common.exceptions import (
     NoSuchElementException,
     StaleElementReferenceException
 )
-from pages.contractClaro import ContratoCard
+from pages.claro.claro_contract_card import ContratoCard
 from typing import Callable, Any
+from services.invoice_service import FaturaService
+from models.invoice_table import faturas
+import os
 
 logger = logging.getLogger(__name__)
 
 class FaturaPage:
-    def __init__(self, driver, timeout=15):
+    def __init__(self, driver, pasta_faturas: str, timeout=15):
         self.driver = driver
         self.wait = WebDriverWait(driver, timeout)
+        self.pasta_faturas = pasta_faturas  # ← adicionado
+        self.fatura_service = FaturaService(self.pasta_faturas, faturas)
     
     def _aguardar_renderizacao_contratos(self):
         logger.info("Aguardando renderização completa dos contratos...")
-        
         try:
             self.wait.until(
                 EC.presence_of_all_elements_located((By.CLASS_NAME, "contract"))
@@ -64,10 +68,9 @@ class FaturaPage:
         pagina_atual = 1
         contratos_falhados = []
         max_tentativas = 3
-        
+
         while True:
             logger.info(f"Processando contratos na página {pagina_atual}...")
-            
             try:
                 self._aguardar_renderizacao_contratos()
             except TimeoutException:
@@ -78,7 +81,6 @@ class FaturaPage:
                     continue
 
             contratos_elements = self.driver.find_elements(By.CLASS_NAME, "contract")
-            
             for i in range(len(contratos_elements)):
                 try:
                     contrato_element = self.driver.find_elements(By.CLASS_NAME, "contract")[i]
@@ -87,24 +89,32 @@ class FaturaPage:
                     if card.esta_encerrado():
                         logger.info(f"Contrato {card.obter_numero_contrato()} está encerrado, pulando.")
                         continue
-                    
-                    logger.info(f"Processando contrato {i+1} da página {pagina_atual}: {card.obter_numero_contrato()}")
-                    
+
                     if card.clicar_selecionar():
-                        logger.info(f"Contrato {card.obter_numero_contrato()} selecionado. Prosseguindo para download.")
-                        callback_processamento(card.obter_numero_contrato())
-                        
+                        numero_contrato = card.obter_numero_contrato()
+                        logger.info(f"Contrato {numero_contrato} selecionado para download.")
+
+                        arquivos_baixados = callback_processamento(numero_contrato)
+
+                        if arquivos_baixados:
+                            logger.info(f"Processando {len(arquivos_baixados)} PDFs do contrato {numero_contrato}...")
+                            for arquivo in arquivos_baixados:
+                                caminho_pdf = os.path.join(self.fatura_service.pasta_faturas, arquivo)
+                                self.fatura_service.processar_fatura_pdf(caminho_pdf)
+                            logger.info(f"PDFs do contrato {numero_contrato} processados com sucesso.")
+                        else:
+                            logger.info(f"Contrato {numero_contrato} não possui faturas pendentes. Pulando processamento.")
+
                         self._voltar_para_pagina_contratos(contratos_url)
-                        
                         for _ in range(pagina_atual - 1):
                             if not self._avancar_para_proxima_pagina():
-                                break 
-                
+                                break
+
                 except Exception as e:
                     contrato_numero = card.obter_numero_contrato() if 'card' in locals() else "desconhecido"
                     logger.error(f"Falha ao processar o contrato {contrato_numero}. Adicionando à lista de falhas. Erro: {e}", exc_info=True)
                     contratos_falhados.append(contrato_numero)
-                    
+
                     try:
                         self._voltar_para_pagina_contratos(contratos_url)
                         for _ in range(pagina_atual - 1):
@@ -113,11 +123,11 @@ class FaturaPage:
                     except Exception as fallback_e:
                         logger.error(f"Falha na tentativa de recuperação. O processo será interrompido: {fallback_e}")
                         return
-            
+
             if not self._avancar_para_proxima_pagina():
                 logger.info("Não há mais páginas. Processamento da primeira rodada concluído.")
                 break
-            
+
             pagina_atual += 1
 
         if contratos_falhados:
@@ -125,7 +135,6 @@ class FaturaPage:
 
     def _tentar_novamente_falhados(self, contratos_falhados: list, callback_processamento: Callable, contratos_url: str, max_tentativas: int):
         logger.info(f"Iniciando a segunda rodada de tentativas para {len(contratos_falhados)} contratos falhados.")
-        
         contratos_nao_processados = list(contratos_falhados)
         
         for tentativa in range(max_tentativas):
@@ -154,8 +163,6 @@ class FaturaPage:
             logger.info("Todas as tentativas de reprocessamento foram concluídas.")
 
     def _processar_contrato_unico(self, numero_contrato: str, callback_processamento: Callable):
-        """Método auxiliar para encontrar e processar um único contrato."""
-        
         logger.info(f"Buscando e processando contrato individual: {numero_contrato}")
 
         while True:
@@ -172,6 +179,11 @@ class FaturaPage:
                     logger.info(f"Contrato {numero_contrato} encontrado para reprocessamento.")
                     if card.clicar_selecionar():
                         callback_processamento(numero_contrato)
+                        # Ajuste: processa todos os PDFs da pasta
+                        for arquivo in os.listdir(self.fatura_service.pasta_faturas):
+                            if arquivo.lower().endswith(".pdf"):
+                                caminho_pdf = os.path.join(self.fatura_service.pasta_faturas, arquivo)
+                                self.fatura_service.processar_fatura_pdf(caminho_pdf)
                         self._voltar_para_pagina_contratos(self.driver.current_url)
                         return
             

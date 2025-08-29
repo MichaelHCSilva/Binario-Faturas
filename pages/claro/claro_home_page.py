@@ -1,9 +1,8 @@
-# pages/home_page.py
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from utils.popUpClaro import PopupHandler
+from utils.popup_claro import PopupHandler
 
 class HomePage:
     def __init__(self, driver, timeout=10):

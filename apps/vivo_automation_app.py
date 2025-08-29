@@ -1,13 +1,13 @@
 import os
-from dotenv import load_dotenv
-from selenium.common.exceptions import InvalidSessionIdException
-from utils.driver.driverFactoryVivo import create_driver
-from utils.popUpClaro import PopupHandler
-from pages.loginVivo import LoginPage
-from customer.customerProcessorVivo import process_customers
-from utils.sessionManager import ensure_logged_in
-import logging
 import time
+import logging
+from selenium.common.exceptions import InvalidSessionIdException
+from dotenv import load_dotenv
+from utils.driver.vivo_chrome_driver import create_driver
+from utils.popup_claro import PopupHandler
+from pages.vivo.vivo_login_page import LoginPage
+from processors.vivo.customer_invoice_processor_vivo import process_customers
+from utils.session_manager import ensure_logged_in
 
 class ApplicationVivo:
     def __init__(self):
@@ -39,9 +39,9 @@ class ApplicationVivo:
                     time.sleep(0.5)
         return False
 
-    def run(self):
+    def run(self, skip_existing=True, max_login_attempts=3):
         if not self.usuario or not self.senha:
-            print("LOGIN_USUARIO ou LOGIN_SENHA não encontrados no .env")
+            logging.error("LOGIN_USUARIO ou LOGIN_SENHA não encontrados no .env")
             return
 
         try:
@@ -49,10 +49,23 @@ class ApplicationVivo:
             self.popup_handler = PopupHandler(self.driver)
             self.login_page = LoginPage(self.driver)
 
+            logging.info("Realizando login inicial...")
             self.login_page.open_login_page()
             self.login_page.perform_login(self.usuario, self.senha)
 
-            ensure_logged_in(self.driver, self.login_page, self.usuario, self.senha)
+            attempt = 0
+            while attempt < max_login_attempts:
+                try:
+                    ensure_logged_in(self.driver, self.login_page, self.usuario, self.senha)
+                    break
+                except Exception as e:
+                    attempt += 1
+                    logging.warning(f"Erro ao checar/refazer login (tentativa {attempt}): {e}")
+                    time.sleep(2)
+                    self.login_page.perform_login(self.usuario, self.senha)
+            else:
+                logging.error("Não foi possível garantir login após várias tentativas.")
+                return
 
             process_customers(
                 self.driver,
@@ -60,15 +73,18 @@ class ApplicationVivo:
                 self.login_page,
                 self.usuario,
                 self.senha,
-                self.pasta_download_base
+                self.pasta_download_base,
+                skip_existing=skip_existing
             )
 
-            logging.info("Automação Vivo finalizada. Continuando automaticamente...")
+            logging.info("Automação Vivo finalizada com sucesso.")
 
         except InvalidSessionIdException:
-            print("A sessão do navegador foi encerrada inesperadamente.")
+            logging.error("A sessão do navegador foi encerrada inesperadamente.")
         except Exception as e:
-            print(f"Erro inesperado na execução: {e}")
+            import traceback
+            logging.error("Erro inesperado na execução:")
+            logging.error(traceback.format_exc())
         finally:
             if self.driver:
                 self.driver.quit()
