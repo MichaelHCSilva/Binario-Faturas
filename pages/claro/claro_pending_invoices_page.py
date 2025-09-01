@@ -33,14 +33,12 @@ class FaturasPendentesPage:
             f"and contains(., '{ano}')]"
         )
         try:
-            logger.info(f"Tentando localizar a aba do mês '{mes.capitalize()} {ano}'...")
             aba_mes = self.wait.until(EC.element_to_be_clickable((By.XPATH, xpath_aba)))
             
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", aba_mes)
             self.wait.until(EC.element_to_be_clickable((By.XPATH, xpath_aba)))
             self.driver.execute_script("arguments[0].click();", aba_mes)
             
-            logger.info(f"Aba do mês '{mes.capitalize()} {ano}' clicada com sucesso.")
             return True
         except TimeoutException:
             logger.warning(f"Aba do mês '{mes.capitalize()} {ano}' não encontrada. Possivelmente não existe fatura para o período.")
@@ -96,12 +94,10 @@ class FaturasPendentesPage:
                         self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", botao_selecionar)
                         self.wait.until(EC.element_to_be_clickable(botao_selecionar)).click()
                         
-                        logger.info("Fatura selecionada. Aguardando botão de download...")
                         download_link = self.wait.until(
                             EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="download-invoice"]'))
                         )
                         
-                        logger.info("Botão de download encontrado. Clicando...")
                         nome_arquivo = download_link.get_attribute("download")
                         self.driver.execute_script("arguments[0].click();", download_link)
                         

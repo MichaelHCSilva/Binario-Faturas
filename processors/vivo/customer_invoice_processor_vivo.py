@@ -1,3 +1,4 @@
+# customer_invoice_processor_vivo.py
 import os
 import time
 import logging
@@ -8,10 +9,11 @@ from services.vivo_invoice_download_service import download_all_paginated_invoic
 from utils.session_manager import ensure_logged_in
 
 def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_download_base, skip_existing=True):
-    customer_selector = CustomerSelectorPage(driver)
 
+    customer_selector = CustomerSelectorPage(driver)
     customer_selector.open_menu()
     cnpjs = customer_selector.get_cnpjs()
+
     if not cnpjs:
         logging.warning("Nenhum CNPJ encontrado. Abortando.")
         customer_selector.close_menu()
@@ -58,10 +60,14 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
                 time.sleep(2)
 
                 download_all_paginated_invoices(
-                    driver,
-                    popup_handler,
-                    pasta_download_base,
-                    cnpj_atual,
+                    driver=driver,
+                    popup_handler=popup_handler,
+                    download_dir=pasta_download_base,
+                    base_folder=pasta_download_base,
+                    cnpj=cnpj_atual,
+                    login_page=login_page,
+                    usuario=usuario,
+                    senha=senha,
                     skip_existing=skip_existing
                 )
 
@@ -69,7 +75,6 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
                 driver.back()
                 time.sleep(2)
                 customer_selector.open_menu()
-
                 sucesso = True
 
             except Exception as e:

@@ -1,89 +1,83 @@
 import os
-import shutil
-import zipfile
 import time
 import traceback
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
-    StaleElementReferenceException, TimeoutException,
-    NoSuchElementException, ElementClickInterceptedException
+    StaleElementReferenceException,
+    TimeoutException,
+    NoSuchElementException,
+    ElementClickInterceptedException
 )
 
 from utils.popup_claro import PopupHandler
-from utils.session_manager import ensure_logged_in  
-
+from utils.session_manager import ensure_logged_in
+from utils.vivo_file_utils import wait_for_download_file, move_file, extract_zip
 from services.invoice_service import FaturaService
 from models.invoice_table import faturas
 
-TEMP_DOWNLOAD_FOLDER = os.path.join(
-    os.path.expanduser("~"), "OneDrive", "Documentos", "Binario-Faturas", "faturas_temp"
-)
+# --- Variáveis globais de logs ---
+log_stats = {
+    "total": 0,
+    "sucesso": 0,
+    "falha": 0,
+    "falhas": []
+}
 
-def wait_for_new_file(folder, previous_files, timeout=15, extension=".pdf"):
-    end_time = time.time() + timeout
-    while time.time() < end_time:
-        files = set(os.listdir(folder)) - previous_files
-        for f in files:
-            if f.endswith(extension) and not f.endswith(".crdownload"):
-                return f
-        time.sleep(0.1)
-    return None
 
-def wait_for_download_complete(path, timeout=15):
-    end_time = time.time() + timeout
-    while time.time() < end_time:
-        if os.path.exists(path) and not path.endswith(".crdownload"):
-            return True
-        time.sleep(0.1)
-    return False
+def log_fatura(page, pos, total_page, pdf_name, sucesso=True, motivo=None):
+    log_stats["total"] += 1
+    if sucesso:
+        log_stats["sucesso"] += 1
+        print(f"Fatura {pos}/{total_page} baixada e processada com sucesso: {pdf_name}")
+    else:
+        log_stats["falha"] += 1
+        print(f"Fatura {pos}/{total_page} falha ao processar: {pdf_name} — {motivo}")
+        log_stats["falhas"].append(
+            f"- Página {page}, posição {pos}: {pdf_name} ({motivo})"
+        )
 
-def process_invoice_menu_button(driver, popup_handler, target_folder, skip_existing=True):
+
+def process_invoice_menu_button(driver, popup_handler, download_dir, target_folder, skip_existing=True):
     try:
-        menu_btn = WebDriverWait(driver, 3, 0.1).until(
+        menu_btn = WebDriverWait(driver, 5, 0.2).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-test-open-dropdown-button='true']"))
         )
         driver.execute_script("arguments[0].click();", menu_btn)
-        dropdown = WebDriverWait(driver, 3, 0.1).until(
+
+        dropdown = WebDriverWait(driver, 5, 0.2).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, "div.dropdown-menu"))
         )
 
-        before_files = set(os.listdir(TEMP_DOWNLOAD_FOLDER))
+        before_files = set(os.listdir(download_dir))
         links = dropdown.find_elements(By.CSS_SELECTOR, "a")
         boleto_link = next((a for a in links if "Boleto (.pdf)" in a.text), None)
 
         if boleto_link:
             driver.execute_script("arguments[0].click();", boleto_link)
-            pdf_name = wait_for_new_file(TEMP_DOWNLOAD_FOLDER, before_files)
+            pdf_name = wait_for_download_file(download_dir, before_files)
             if pdf_name:
-                pdf_path = os.path.join(TEMP_DOWNLOAD_FOLDER, pdf_name)
-                wait_for_download_complete(pdf_path)
-                final_path = os.path.join(target_folder, f"vivo_{pdf_name}")
-                if skip_existing and os.path.exists(final_path):
-                    print(f"PDF já existe, pulando: {pdf_name}")
-                    os.remove(pdf_path)
-                else:
-                    shutil.move(pdf_path, final_path)
-                    print(f"Fatura PDF movida: {pdf_name}")
+                pdf_path = os.path.join(download_dir, pdf_name)
+                final_path = move_file(pdf_path, target_folder, f"vivo_{pdf_name}", overwrite=False)
+                if final_path:
                     FaturaService(target_folder, faturas).processar_fatura_pdf(final_path)
-        else:
-            print("Link 'Boleto (.pdf)' não encontrado no menu suspenso.")
 
-    except Exception as e:
-        print(f"Erro ao tentar baixar via menu suspenso: {type(e).__name__} - {e}")
+    except TimeoutException:
+        print("[Info] Menu suspenso não encontrado, nenhuma fatura via menu disponível.")
+    except Exception:
         traceback.print_exc()
 
-def download_invoices_from_page(driver, popup_handler, target_folder, cnpj,
+
+def download_invoices_from_page(driver, popup_handler, download_dir, target_folder, cnpj,
                                 login_page=None, usuario=None, senha=None,
-                                reopen_customer_fn=None, skip_existing=True):
+                                reopen_customer_fn=None, skip_existing=True, page_number=1):
     try:
-        rows = WebDriverWait(driver, 5, 0.1).until(
+        rows = WebDriverWait(driver, 5, 0.2).until(
             EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.mve-grid-row"))
         )
     except TimeoutException:
-        print("Nenhum grid de faturas encontrado, tentando menu suspenso.")
-        process_invoice_menu_button(driver, popup_handler, target_folder, skip_existing)
+        process_invoice_menu_button(driver, popup_handler, download_dir, target_folder, skip_existing)
         return
 
     def already_downloaded(invoice):
@@ -103,141 +97,134 @@ def download_invoices_from_page(driver, popup_handler, target_folder, cnpj,
         and r.find_elements(By.XPATH, ".//button[contains(., 'Baixar agora')]")
         and not already_downloaded(r)
     ]
+
     if not pending:
-        print("Nenhuma fatura pendente ou já baixada.")
+        print(f"[Info] Nenhuma fatura pendente na página {page_number}.")
         return
 
+    print(f"Página {page_number}/? de faturas")
     popup_handler.close_known_popups()
+    total_page = len(pending)
 
     for i, invoice in enumerate(pending, 1):
-        print(f"Fatura {i}/{len(pending)}")
         attempts = 0
+        pdf_name = "desconhecido.pdf"
+        try:
+            customer = invoice.find_element(By.CSS_SELECTOR, "div[data-test-secondary-info] span").text.strip()
+            due = invoice.find_element(By.CSS_SELECTOR, "div[data-test-invoice-due-date]").text.strip().replace("/", "")
+            pdf_name = f"vivo_{customer}_{due}.pdf"
+        except Exception:
+            pass
+
         while attempts < 3:
             try:
-                if login_page and usuario and senha:
-                    session_active = ensure_logged_in(driver, login_page, usuario, senha, reopen_customer_fn, cnpj)
-                    if session_active:
-                        print("Sessão renovada. Continuando downloads...")
-                        time.sleep(1)
-                        rows = driver.find_elements(By.CSS_SELECTOR, "div.mve-grid-row")
-                        pending = [
-                            r for r in rows
-                            if not r.find_elements(By.CSS_SELECTOR, ".invoice-due-date-label-paid")
-                            and r.find_elements(By.XPATH, ".//button[contains(., 'Baixar agora')]")
-                            and not already_downloaded(r)
-                        ]
-                        if i-1 < len(pending):
-                            invoice = pending[i-1]
-                        else:
-                            print("Todas as faturas já baixadas após relogin")
-                            break
-
-                before_files = set(os.listdir(TEMP_DOWNLOAD_FOLDER))
+                before_files = set(os.listdir(download_dir))
                 btn = invoice.find_element(By.XPATH, ".//button[contains(., 'Baixar agora')]")
                 driver.execute_script("arguments[0].click();", btn)
 
                 try:
                     zip_btn = invoice.find_element(By.XPATH, ".//button[contains(., 'Todas em boleto (.zip)')]")
                     driver.execute_script("arguments[0].click();", zip_btn)
-                    zip_name = wait_for_new_file(TEMP_DOWNLOAD_FOLDER, before_files, extension=".zip")
+                    zip_name = wait_for_download_file(download_dir, before_files, extension=".zip")
                     if zip_name:
-                        zip_path = os.path.join(TEMP_DOWNLOAD_FOLDER, zip_name)
-                        wait_for_download_complete(zip_path)
-                        with zipfile.ZipFile(zip_path, 'r') as z:
-                            z.extractall(TEMP_DOWNLOAD_FOLDER)
+                        zip_path = os.path.join(download_dir, zip_name)
+                        extract_zip(zip_path, download_dir)
                         os.remove(zip_path)
 
-                        customer = invoice.find_element(By.CSS_SELECTOR, "div[data-test-secondary-info] span").text.strip()
-                        due = invoice.find_element(By.CSS_SELECTOR, "div[data-test-invoice-due-date]").text.strip().replace("/", "")
-                        for f in os.listdir(TEMP_DOWNLOAD_FOLDER):
+                        for f in os.listdir(download_dir):
                             if f.endswith(".pdf"):
-                                pdf_path = os.path.join(TEMP_DOWNLOAD_FOLDER, f)
-                                wait_for_download_complete(pdf_path)
-                                final_path = os.path.join(target_folder, f"vivo_{customer}_{due}.pdf")
-                                if skip_existing and os.path.exists(final_path):
-                                    os.remove(pdf_path)
-                                    continue
-                                shutil.move(pdf_path, final_path)
-                                FaturaService(target_folder, faturas).processar_fatura_pdf(final_path)
-                    break
-
+                                pdf_path = os.path.join(download_dir, f)
+                                final_path = move_file(pdf_path, target_folder, pdf_name, overwrite=False)
+                                if final_path:
+                                    FaturaService(target_folder, faturas).processar_fatura_pdf(final_path)
+                                    log_fatura(page_number, i, total_page, pdf_name, sucesso=True)
+                                else:
+                                    log_fatura(page_number, i, total_page, pdf_name, sucesso=False,
+                                               motivo="não cadastrada no banco")
+                        break
                 except NoSuchElementException:
                     pdf_btn = invoice.find_element(By.XPATH, ".//button[contains(., 'Boleto (.pdf)')]")
                     driver.execute_script("arguments[0].click();", pdf_btn)
-                    pdf_name = wait_for_new_file(TEMP_DOWNLOAD_FOLDER, before_files, extension=".pdf")
-                    if pdf_name:
-                        pdf_path = os.path.join(TEMP_DOWNLOAD_FOLDER, pdf_name)
-                        wait_for_download_complete(pdf_path)
-                        customer = invoice.find_element(By.CSS_SELECTOR, "div[data-test-secondary-info] span").text.strip()
-                        due = invoice.find_element(By.CSS_SELECTOR, "div[data-test-invoice-due-date]").text.strip().replace("/", "")
-                        final_path = os.path.join(target_folder, f"vivo_{customer}_{due}.pdf")
-                        if skip_existing and os.path.exists(final_path):
-                            os.remove(pdf_path)
-                        else:
-                            shutil.move(pdf_path, final_path)
+                    pdf_name_downloaded = wait_for_download_file(download_dir, before_files, extension=".pdf")
+                    if pdf_name_downloaded:
+                        pdf_path = os.path.join(download_dir, pdf_name_downloaded)
+                        final_path = move_file(pdf_path, target_folder, pdf_name, overwrite=False)
+                        if final_path:
                             FaturaService(target_folder, faturas).processar_fatura_pdf(final_path)
+                            log_fatura(page_number, i, total_page, pdf_name, sucesso=True)
+                        else:
+                            log_fatura(page_number, i, total_page, pdf_name, sucesso=False,
+                                       motivo="não cadastrada no banco")
                     break
 
             except (ElementClickInterceptedException, StaleElementReferenceException):
-                print("Click bloqueado ou elemento obsoleto, tentando novamente...")
-                time.sleep(0.2)
+                time.sleep(0.3)
                 attempts += 1
-            except Exception as e:
-                print("Erro inesperado ao baixar fatura:", type(e).__name__, e)
+            except Exception:
+                log_fatura(page_number, i, total_page, pdf_name, sucesso=False, motivo="erro inesperado")
                 traceback.print_exc()
                 break
 
-def download_all_paginated_invoices(driver, popup_handler, base_folder, cnpj,
+
+def download_all_paginated_invoices(driver, popup_handler, download_dir, base_folder, cnpj,
                                     login_page=None, usuario=None, senha=None,
                                     reopen_customer_fn=None, skip_existing=True):
+    global log_stats
+    log_stats = {"total": 0, "sucesso": 0, "falha": 0, "falhas": []}
+
     target_folder = os.path.join(base_folder, "Vivo", cnpj.replace(".", "").replace("/", "-"))
     os.makedirs(target_folder, exist_ok=True)
-    os.makedirs(TEMP_DOWNLOAD_FOLDER, exist_ok=True)
-
-    try:
-        WebDriverWait(driver, 3, 0.1).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-test-dont-have-account-message-wireline]"))
-        )
-        driver.find_element(By.CSS_SELECTOR, "button[data-test-redirect-dashboard-button]").click()
-        print("Nenhuma fatura disponível")
-        return
-    except TimeoutException:
-        pass
-
-    first = ""
-    try:
-        first = WebDriverWait(driver, 4, 0.1).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div.mve-grid-row:first-of-type div[data-test-secondary-info] span"))
-        ).text.strip()
-    except Exception:
-        pass
 
     page = 1
+    first = ""
+    try:
+        first = WebDriverWait(driver, 5, 0.2).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "div.mve-grid-row:first-of-type div[data-test-secondary-info] span")
+            )
+        ).text.strip()
+    except TimeoutException:
+        print("[Info] Nenhuma fatura disponível nesta conta.")
+        return
+
     while True:
-        print(f"Page {page}")
-
         if login_page and usuario and senha:
-            ensure_logged_in(driver, login_page, usuario, senha, reopen_customer_fn, cnpj)
+            # ✅ corrigido: agora só passa 4 args
+            ensure_logged_in(driver, login_page, usuario, senha)
 
-        download_invoices_from_page(driver, popup_handler, target_folder, cnpj,
-                                    login_page, usuario, senha, reopen_customer_fn, skip_existing)
+        download_invoices_from_page(driver, popup_handler, download_dir, target_folder, cnpj,
+                                    login_page, usuario, senha, reopen_customer_fn, skip_existing,
+                                    page_number=page)
 
         try:
-            btn = WebDriverWait(driver, 3, 0.1).until(
+            next_btn = WebDriverWait(driver, 5, 0.2).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "li.button--pagination-next > button"))
             )
-            if not btn.is_enabled():
+            if not next_btn.is_enabled():
                 break
-            driver.execute_script("arguments[0].click();", btn)
+            driver.execute_script("arguments[0].click();", next_btn)
 
-            WebDriverWait(driver, 5, 0.1).until(
-                lambda d: d.find_element(By.CSS_SELECTOR,
-                                         "div.mve-grid-row:first-of-type div[data-test-secondary-info] span"
-                                         ).text.strip() != first
+            WebDriverWait(driver, 5, 0.2).until(
+                lambda d: d.find_element(
+                    By.CSS_SELECTOR,
+                    "div.mve-grid-row:first-of-type div[data-test-secondary-info] span"
+                ).text.strip() != first
             )
-            first = driver.find_element(By.CSS_SELECTOR,
-                                        "div.mve-grid-row:first-of-type div[data-test-secondary-info] span"
-                                        ).text.strip()
+            first = driver.find_element(
+                By.CSS_SELECTOR,
+                "div.mve-grid-row:first-of-type div[data-test-secondary-info] span"
+            ).text.strip()
             page += 1
-        except Exception:
+        except TimeoutException:
             break
+        except Exception:
+            traceback.print_exc()
+            break
+
+    print(f"\nDownload concluído: {log_stats['total']} faturas processadas, "
+          f"{log_stats['sucesso']} inseridas com sucesso, {log_stats['falha']} falhas")
+
+    if log_stats["falha"] > 0:
+        print("Resumo das falhas:")
+        for falha in log_stats["falhas"]:
+            print(falha)

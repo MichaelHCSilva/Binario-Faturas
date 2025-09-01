@@ -14,14 +14,13 @@ from utils.popup_vivo import tratar_popup_cookies
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-
 class ClaroAutomationApp:
     def __init__(self):
         load_dotenv()
         self.driver = None
         self.USUARIO_CLARO = os.getenv("USUARIO_CLARO")
         self.SENHA_CLARO = os.getenv("SENHA_CLARO")
-        self.LOGIN_URL = os.getenv("LOGIN_URL")
+        self.CLARO_LOGIN_URL = os.getenv("CLARO_LOGIN_URL")
         self.CONTRATOS_URL = os.getenv("CONTRATOS_URL")
 
         self.LINUX_DOWNLOAD_DIR = os.getenv("LINUX_DOWNLOAD_DIR")
@@ -30,15 +29,15 @@ class ClaroAutomationApp:
         self.PROFILE_DIRECTORY = os.getenv("CHROME_PROFILE_DIRECTORY")
 
         self.download_dir = self.LINUX_DOWNLOAD_DIR if os.name == 'posix' else self.WINDOWS_DOWNLOAD_DIR
-        garantir_diretorio(self.download_dir)
+        self.claro_base_folder = os.path.join(self.download_dir, "Claro")
+        garantir_diretorio(self.claro_base_folder)
 
     def _setup_driver(self):
-        """Configura o Selenium ChromeDriver com tolerância a erros."""
         try:
             self.driver = configurar_driver_chrome(
                 user_data_dir=self.USER_DATA_DIR,
                 profile_directory=self.PROFILE_DIRECTORY,
-                download_dir=self.download_dir
+                download_dir=self.claro_base_folder
             )
             self.driver.set_page_load_timeout(180)
             return True
@@ -47,7 +46,7 @@ class ClaroAutomationApp:
             return False
 
     def _login(self):
-        login_page = LoginPage(self.driver, self.LOGIN_URL)
+        login_page = LoginPage(self.driver, self.CLARO_LOGIN_URL)
     
         try:
             login_page.open_login_page(retries=3)
@@ -96,13 +95,13 @@ class ClaroAutomationApp:
                 logger.warning(f"Falha ao tratar popup de cookies na sessão ativa: {type(e).__name__} - {e}", exc_info=True)
 
     def _process_contracts(self):
-        fatura_page = FaturaPage(self.driver, self.download_dir)
+        fatura_page = FaturaPage(self.driver, self.claro_base_folder)
         faturas_pendentes_page = FaturasPendentesPage(self.driver)
         download_service = DownloadService(self.driver, faturas_pendentes_page)
 
         def download_faturas_callback(numero_contrato: str):
             try:
-                download_service.baixar_faturas(numero_contrato, self.LINUX_DOWNLOAD_DIR, self.WINDOWS_DOWNLOAD_DIR)
+                download_service.baixar_faturas(numero_contrato, self.claro_base_folder, self.claro_base_folder)
             except Exception as e:
                 logger.error(f"Erro ao baixar faturas do contrato {numero_contrato}: {type(e).__name__} - {e}", exc_info=True)
 

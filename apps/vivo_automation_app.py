@@ -5,18 +5,24 @@ from selenium.common.exceptions import InvalidSessionIdException
 from dotenv import load_dotenv
 from utils.driver.vivo_chrome_driver import create_driver
 from utils.popup_claro import PopupHandler
-from pages.vivo.vivo_login_page import LoginPage
+from pages.vivo.vivo_login_page import LoginPageVivo
 from processors.vivo.customer_invoice_processor_vivo import process_customers
 from utils.session_manager import ensure_logged_in
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 class ApplicationVivo:
     def __init__(self):
         load_dotenv()
         self.usuario = os.getenv("LOGIN_USUARIO")
         self.senha = os.getenv("LOGIN_SENHA")
-        self.pasta_download_base = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "faturas"
-        )
+        self.login_url = os.getenv("VIVO_LOGIN_URL")
+
+        self.LINUX_DOWNLOAD_DIR = os.getenv("LINUX_DOWNLOAD_DIR")
+        self.WINDOWS_DOWNLOAD_DIR = os.getenv("WINDOWS_DOWNLOAD_DIR")
+        self.download_dir = self.LINUX_DOWNLOAD_DIR if os.name == 'posix' else self.WINDOWS_DOWNLOAD_DIR
+
         self.driver = None
         self.popup_handler = None
         self.login_page = None
@@ -45,9 +51,9 @@ class ApplicationVivo:
             return
 
         try:
-            self.driver = create_driver(self.pasta_download_base)
+            self.driver = create_driver(self.download_dir)
             self.popup_handler = PopupHandler(self.driver)
-            self.login_page = LoginPage(self.driver)
+            self.login_page = LoginPageVivo(self.driver, self.login_url)
 
             logging.info("Realizando login inicial...")
             self.login_page.open_login_page()
@@ -73,15 +79,15 @@ class ApplicationVivo:
                 self.login_page,
                 self.usuario,
                 self.senha,
-                self.pasta_download_base,
-                skip_existing=skip_existing
+                self.download_dir, 
+                skip_existing
             )
 
             logging.info("Automação Vivo finalizada com sucesso.")
 
         except InvalidSessionIdException:
             logging.error("A sessão do navegador foi encerrada inesperadamente.")
-        except Exception as e:
+        except Exception:
             import traceback
             logging.error("Erro inesperado na execução:")
             logging.error(traceback.format_exc())

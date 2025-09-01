@@ -127,7 +127,7 @@ class FaturaService:
                 total_falhas.extend(resultado["falhas"])
 
         if not total_falhas:
-            logging.info("✅ Todas as faturas foram processadas com sucesso.")
+            logging.info("Todas as faturas foram processadas com sucesso.")
         else:
             mensagem = (
                 f"Processamento concluído: {total_inseridas} faturas inseridas, "

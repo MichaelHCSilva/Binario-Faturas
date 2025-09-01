@@ -4,20 +4,19 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 import os
 
-from services.vivo_invoice_download_service import TEMP_DOWNLOAD_FOLDER
+def create_driver(download_dir):
 
-def create_driver(pasta_download_base):
     options = Options()
     options.add_argument("--start-maximized")
 
-    download_dir = TEMP_DOWNLOAD_FOLDER
+    # Garantir que a pasta exista
     os.makedirs(download_dir, exist_ok=True)
 
     prefs = {
         "download.default_directory": download_dir,
         "download.prompt_for_download": False,
-        "download.directory_upgrade": True,  
-        "profile.default_content_setting_values.automatic_downloads": 1, 
+        "download.directory_upgrade": True,
+        "profile.default_content_setting_values.automatic_downloads": 1,
         "plugins.always_open_pdf_externally": True
     }
 

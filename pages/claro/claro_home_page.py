@@ -15,13 +15,10 @@ class HomePage:
             print("Verificando e tentando fechar popups antes de interagir...")
             self.popup_handler.close_known_popups()
 
-            print("Tentando clicar no menu 'Contas'...")
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, "//li[@data-e2e-header-menu-invoices='']//span[text()='Contas']"))
             ).click()
-            print("Menu 'Contas' clicado com sucesso.")
 
-            print("Tentando acessar a opção 'Acessar faturas'...")
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, "//li[@data-nav-menu-dropdown-item='invoices']//span[text()='Acessar faturas']"))
             ).click()
@@ -41,7 +38,6 @@ class HomePage:
             self.wait.until(EC.presence_of_element_located(
                 (By.XPATH, "//li[@data-nav-menu-dropdown-item='invoices']//span[text()='Acessar faturas']"))
             )
-            print("Opção 'Acessar faturas' encontrada no menu.")
             return True
         except Exception:
             print("Opção 'Acessar faturas' NÃO encontrada no menu para este CNPJ.")

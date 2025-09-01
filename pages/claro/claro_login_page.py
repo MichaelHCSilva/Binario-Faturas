@@ -12,10 +12,9 @@ class LoginPage:
         self.driver = driver
         self.url = login_url
         self.wait = WebDriverWait(driver, timeout)
-        self.driver.set_page_load_timeout(120)  # Timeout maior para carregar página
+        self.driver.set_page_load_timeout(120)
 
     def open_login_page(self, retries=2):
-        logger.info(f"Abrindo página de login: {self.url}...")
         for attempt in range(retries):
             try:
                 start = time.time()
@@ -56,19 +55,16 @@ class LoginPage:
 
     def selecionar_minha_claro_residencial(self):
         try:
-            logger.info("Procurando opção 'Minha Claro Residencial'...")
             xpath = "//a[contains(@class, 'mdn-Shortcut') and .//p[text()='Minha Claro Residencial']]"
             link = self.wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
             self.driver.execute_script("arguments[0].scrollIntoView(true);", link)
             self.driver.execute_script("arguments[0].click();", link)
-            logger.info("Opção 'Minha Claro Residencial' selecionada.")
             self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[data-testid="cpfCnpj"]')))
         except Exception as e:
             logger.error(f"Erro ao selecionar 'Minha Claro Residencial': {e}", exc_info=True)
 
     def preencher_login_usuario(self, usuario: str):
         try:
-            logger.info("Preenchendo login com CNPJ...")
             campo = self.wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[data-testid="cpfCnpj"]')))
             self.driver.execute_script("arguments[0].scrollIntoView(true);", campo)
             campo.clear()
@@ -78,18 +74,15 @@ class LoginPage:
 
     def clicar_continuar(self):
         try:
-            logger.info("Clicando no botão 'Continuar'...")
             btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@data-testid='continuar']")))
             self.driver.execute_script("arguments[0].scrollIntoView(true);", btn)
             self.driver.execute_script("arguments[0].click();", btn)
-            logger.info("Botão 'Continuar' clicado.")
             self.wait.until(EC.visibility_of_element_located((By.ID, "password")))
         except Exception as e:
             logger.error(f"Erro ao clicar no botão 'Continuar': {e}", exc_info=True)
 
     def preencher_senha(self, senha: str):
         try:
-            logger.info("Preenchendo senha...")
             campo_senha = self.wait.until(EC.visibility_of_element_located((By.ID, "password")))
             self.driver.execute_script("arguments[0].scrollIntoView(true);", campo_senha)
             campo_senha.send_keys(senha)
@@ -98,11 +91,9 @@ class LoginPage:
 
     def clicar_botao_acessar(self):
         try:
-            logger.info("Clicando no botão 'Acessar'...")
             botao_acessar = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-testid='acessar']")))
             self.driver.execute_script("arguments[0].scrollIntoView(true);", botao_acessar)
             self.driver.execute_script("arguments[0].click();", botao_acessar)
-            logger.info("Botão 'Acessar' clicado com sucesso.")
             self.wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
         except Exception as e:
             logger.error(f"Erro ao clicar no botão 'Acessar': {e}", exc_info=True)

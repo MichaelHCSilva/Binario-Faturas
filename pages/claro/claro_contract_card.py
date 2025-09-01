@@ -33,9 +33,7 @@ class ContratoCard:
     def clicar_selecionar(self) -> bool:
 
         try:
-            logger.info("Tentando clicar em 'Selecionar' no contrato.")
             botao_locator = (By.XPATH, ".//button[contains(text(), 'Selecionar')]")
-            
             botao_selecionar = WebDriverWait(self.card_element, 5).until(
                 EC.element_to_be_clickable(botao_locator)
             )
@@ -60,7 +58,6 @@ class ContratoCard:
             except NoSuchElementException:
                 numero = texto_completo
             
-            logger.info(f"Número do contrato encontrado: {numero}")
             return numero
         except Exception as e:
             logger.error(f"Não foi possível obter o número do contrato: {e}")

@@ -6,7 +6,6 @@ from selenium.webdriver.support import expected_conditions as EC
 _primeiro_login = True
 
 def ensure_logged_in(driver, login_page, usuario, senha):
-
     global _primeiro_login
     try:
         if "login" in driver.current_url or "auth" in driver.current_url:
@@ -15,7 +14,6 @@ def ensure_logged_in(driver, login_page, usuario, senha):
                 _primeiro_login = False
             else:
                 print("Sessão expirada! Refazendo login (detecção por URL)...")
-
             login_page.perform_login(usuario, senha)
             time.sleep(3)
             return True
@@ -29,14 +27,11 @@ def ensure_logged_in(driver, login_page, usuario, senha):
                 _primeiro_login = False
             else:
                 print("Sessão expirada! Refazendo login (detecção por elemento)...")
-
             login_page.perform_login(usuario, senha)
             time.sleep(3)
             return True
         except:
             pass
-
     except Exception as e:
         print(f"Erro ao checar/refazer login: {e}")
-
     return False

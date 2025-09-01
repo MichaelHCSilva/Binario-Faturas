@@ -20,7 +20,7 @@ class FaturaPage:
     def __init__(self, driver, pasta_faturas: str, timeout=15):
         self.driver = driver
         self.wait = WebDriverWait(driver, timeout)
-        self.pasta_faturas = pasta_faturas  # ← adicionado
+        self.pasta_faturas = pasta_faturas  
         self.fatura_service = FaturaService(self.pasta_faturas, faturas)
     
     def _aguardar_renderizacao_contratos(self):
@@ -179,7 +179,6 @@ class FaturaPage:
                     logger.info(f"Contrato {numero_contrato} encontrado para reprocessamento.")
                     if card.clicar_selecionar():
                         callback_processamento(numero_contrato)
-                        # Ajuste: processa todos os PDFs da pasta
                         for arquivo in os.listdir(self.fatura_service.pasta_faturas):
                             if arquivo.lower().endswith(".pdf"):
                                 caminho_pdf = os.path.join(self.fatura_service.pasta_faturas, arquivo)
