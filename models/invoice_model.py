@@ -1,5 +1,6 @@
 import uuid
-from sqlalchemy import Column, String, Numeric, Date, Text
+from datetime import datetime, timezone
+from sqlalchemy import Column, String, Numeric, Date, Text, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base
 
@@ -28,3 +29,4 @@ class Fatura(Base):
     data_vencimento = Column(Date, nullable=True)
     data_contabil = Column(Date, nullable=True)
     numero_fatura = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

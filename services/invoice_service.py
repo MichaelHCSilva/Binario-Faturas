@@ -3,6 +3,7 @@ import uuid
 import pdfplumber
 import logging
 import traceback
+from datetime import datetime, timezone
 from sqlalchemy import create_engine, Table, insert, select
 from config.database_config import DATABASE_URL
 from extractors.claro.claro_invoice_extractor import extrair_claro
@@ -40,6 +41,7 @@ class FaturaService:
 
     def salvar_fatura(self, dados: dict) -> str:
         dados["id"] = uuid.uuid4()
+        dados["created_at"] = datetime.now(timezone.utc)
         if "valores_retencoes" not in dados:
             dados["valores_retencoes"] = None
 

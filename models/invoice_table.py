@@ -1,4 +1,5 @@
-from sqlalchemy import MetaData, Table, Column, String, Float, Date
+from datetime import datetime
+from sqlalchemy import MetaData, Table, Column, String, Float, Date, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 
 metadata = MetaData()
@@ -24,5 +25,6 @@ faturas = Table(
     Column("valor_icms", Float),
     Column("data_vencimento", Date),
     Column("data_contabil", Date),
-    Column("numero_fatura", String)
+    Column("numero_fatura", String),
+    Column("created_at", DateTime)
 )
