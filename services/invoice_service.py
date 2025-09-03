@@ -4,16 +4,22 @@ import pdfplumber
 import logging
 import traceback
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, Table, insert, select
-from config.database_config import DATABASE_URL
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+
+from config.database_engine import engine, Session
+from models.invoice_model import Fatura
 from extractors.claro.claro_invoice_extractor import extrair_claro
 from extractors.vivo.vivo_invoice_extractor import extrair_vivo
 
+logger = logging.getLogger(__name__)
+
+Session = sessionmaker(bind=engine)
+
 class FaturaService:
-    def __init__(self, pasta_faturas: str, faturas_table: Table):
+    def __init__(self, pasta_faturas: str):
         self.pasta_faturas = pasta_faturas
-        self.engine = create_engine(DATABASE_URL)
-        self.faturas = faturas_table
+        self.session = Session()
 
     def identificar_operadora(self, texto: str) -> str:
         texto_lower = texto.lower()
@@ -40,32 +46,50 @@ class FaturaService:
         return texto_pdf
 
     def salvar_fatura(self, dados: dict) -> str:
-        dados["id"] = uuid.uuid4()
-        dados["created_at"] = datetime.now(timezone.utc)
-        if "valores_retencoes" not in dados:
-            dados["valores_retencoes"] = None
-
-        colunas = self.faturas.columns.keys()
-        dados_filtrados = {k: v for k, v in dados.items() if k in colunas}
-
         try:
-            with self.engine.begin() as conn:
-                stmt_check = select(self.faturas).where(
-                    self.faturas.c.numero_fatura == dados_filtrados.get("numero_fatura"),
-                    self.faturas.c.numero_contrato == dados_filtrados.get("numero_contrato"),
-                    self.faturas.c.numero_cnpj == dados_filtrados.get("numero_cnpj")
-                )
-                existe = conn.execute(stmt_check).fetchone()
+            # Verificar existência
+            existente = self.session.query(Fatura).filter_by(
+                numero_fatura=dados.get("numero_fatura"),
+                numero_contrato=dados.get("numero_contrato"),
+                numero_cnpj=dados.get("cnpj_fornecedor")  # <-- aqui use numero_cnpj
+            ).first()
 
-                if existe:
-                    return "existente"
+            if existente:
+                return "existente"
 
-                stmt = insert(self.faturas).values(**dados_filtrados)
-                conn.execute(stmt)
+            # Criar objeto ORM
+            nova_fatura = Fatura(
+                id=uuid.uuid4(),
+                operadora=dados.get("operadora"),
+                numero_contrato=dados.get("numero_contrato"),
+                nome_fornecedor=dados.get("nome_fornecedor"),
+                valor_total=dados.get("valor_total"),
+                valores_multa=dados.get("valores_multa"),
+                valores_juros=dados.get("valores_juros"),
+                valores_retencoes=dados.get("valores_retencoes"),
+                forma_pagamento=dados.get("forma_pagamento"),
+                numero_cnpj=dados.get("numero_cnpj"),
+                numero_nf=dados.get("numero_nf"),
+                numero_serie=dados.get("numero_serie"),
+                data_emissao=dados.get("data_emissao"),
+                valor_nf=dados.get("valor_nf"),
+                base_calculo_icms=dados.get("base_calculo_icms"),
+                valor_aliquota=dados.get("valor_aliquota"),
+                valor_icms=dados.get("valor_icms"),
+                data_vencimento=dados.get("data_vencimento"),
+                data_contabil=dados.get("data_contabil"),
+                numero_fatura=dados.get("numero_fatura"),
+                created_at=datetime.now(timezone.utc)
+            )
 
+
+            self.session.add(nova_fatura)
+            self.session.commit()
             return "ok"
 
-        except Exception as e:
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            logger.error(f"Erro ao salvar fatura: {e}", exc_info=True)
             return f"erro: {str(e)}"
 
     def processar_fatura_pdf(self, caminho_pdf: str) -> dict:
@@ -79,7 +103,7 @@ class FaturaService:
             lista_faturas = self.extrair_operadora(operadora, caminho_pdf)
 
             if not lista_faturas:
-                logging.warning(f"Nenhuma fatura extraída de {os.path.basename(caminho_pdf)}.")
+                logger.warning(f"Nenhuma fatura extraída de {os.path.basename(caminho_pdf)}.")
                 return {"inseridas": 0, "existentes": 0, "falhas": []}
 
             for dados in lista_faturas:
@@ -92,7 +116,7 @@ class FaturaService:
                     falhas.append({
                         "numero_fatura": dados.get("numero_fatura"),
                         "numero_contrato": dados.get("numero_contrato"),
-                        "numero_cnpj": dados.get("numero_cnpj"),
+                        "cnpj_fornecedor": dados.get("cnpj_fornecedor"),
                         "erro": resultado
                     })
 
@@ -100,36 +124,36 @@ class FaturaService:
             falhas.append({
                 "numero_fatura": None,
                 "numero_contrato": None,
-                "numero_cnpj": None,
+                "cnpj_fornecedor": None,
                 "erro": traceback.format_exc()
             })
         
         return {"inseridas": inseridas, "existentes": existentes, "falhas": falhas}
 
     def processar_todas_faturas_na_pasta(self):
+        arquivos_pdf = [f for f in os.listdir(self.pasta_faturas) if f.lower().endswith('.pdf')]
+
+        if not arquivos_pdf:
+            logger.info("Nenhum arquivo PDF encontrado na pasta.")
+            return
+
         total_inseridas = 0
         total_existentes = 0
         total_falhas = []
-        
-        arquivos_pdf = [f for f in os.listdir(self.pasta_faturas) if f.lower().endswith('.pdf')]
-        
-        if not arquivos_pdf:
-            logging.info("Nenhum arquivo PDF encontrado na pasta.")
-            return
 
-        logging.info(f"Iniciando processamento de {len(arquivos_pdf)} arquivo(s) PDF...")
+        logger.info(f"Iniciando processamento de {len(arquivos_pdf)} arquivo(s) PDF...")
 
         for arquivo in arquivos_pdf:
             caminho_completo = os.path.join(self.pasta_faturas, arquivo)
             resultado = self.processar_fatura_pdf(caminho_completo)
-            
+
             total_inseridas += resultado["inseridas"]
             total_existentes += resultado["existentes"]
             if resultado["falhas"]:
                 total_falhas.extend(resultado["falhas"])
 
         if not total_falhas:
-            logging.info("Todas as faturas foram processadas com sucesso.")
+            logger.info("Todas as faturas foram processadas com sucesso.")
         else:
             mensagem = (
                 f"Processamento concluído: {total_inseridas} faturas inseridas, "
@@ -139,6 +163,6 @@ class FaturaService:
                 mensagem += (
                     f"   - Fatura: numero_fatura={f.get('numero_fatura', 'N/A')}, "
                     f"numero_contrato={f.get('numero_contrato', 'N/A')}, "
-                    f"CNPJ={f.get('numero_cnpj', 'N/A')}, erro={f['erro']}\n"
+                    f"CNPJ={f.get('cnpj_fornecedor', 'N/A')}, erro={f['erro']}\n"
                 )
-            logging.warning(mensagem)
+            logger.warning(mensagem)

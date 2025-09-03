@@ -33,25 +33,21 @@ def extrair_vivo(pdf_path: str) -> dict:
 
     linhas = texto.splitlines()
 
-    # número do contrato
     for linha in linhas:
         if "Número da Conta:" in linha:
             dados["numero_contrato"] = linha.split("Número da Conta:")[1].strip()
             break
 
-    # nome fornecedor
     for linha in linhas:
         if re.search(r"Telefônica|Vivo", linha, re.IGNORECASE):
             dados["nome_fornecedor"] = linha.strip()
             break
 
-    # número da fatura
     for linha in linhas:
         if "Número da Fatura:" in linha:
             dados["numero_fatura"] = linha.split("Número da Fatura:")[1].strip()
             break
 
-    # data de emissão
     for linha in linhas:
         if "Data de Emissão:" in linha:
             try:
@@ -61,32 +57,26 @@ def extrair_vivo(pdf_path: str) -> dict:
             except:
                 pass
 
-    # vencimento
     match_venc = re.search(r"VENCIMENTO\s*(\d{2}/\d{2}/\d{4})", texto, re.IGNORECASE)
     if match_venc:
         dados["data_vencimento"] = datetime.strptime(match_venc.group(1), "%d/%m/%Y").date()
 
-    # valor total
     match_total = re.search(r"TOTAL GERAL\s*([\d.,]+)", texto, re.IGNORECASE)
     if match_total:
         dados["valor_total"] = float(match_total.group(1).replace(".", "").replace(",", "."))
 
-    # multa
     match_multa = re.search(r"(\d+)% de multa", texto)
     if match_multa:
         dados["valores_multa"] = match_multa.group(1) + "%"
 
-    # juros
     match_juros = re.search(r"(\d+)% de juros ao mês", texto)
     if match_juros:
         dados["valores_juros"] = match_juros.group(1) + "% ao mês"
 
-    # código de barras
     match_cb = re.search(r"(\d{44})", texto.replace(" ", ""))
     if match_cb:
         dados["codigo_barras"] = match_cb.group(1)
 
-    # forma de pagamento
     forma_pagamento = None
     for linha in linhas:
         if "DÉBITO AUTOMÁTICO" in linha.upper():
@@ -101,12 +91,10 @@ def extrair_vivo(pdf_path: str) -> dict:
     elif dados["codigo_barras"]:
         dados["forma_pagamento"] = f"Boleto (código de barras: {dados['codigo_barras']})"
 
-    # cnpj
     cnpjs = re.findall(r"\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}", texto)
     if cnpjs:
         dados["numero_cnpj"] = cnpjs[0]
 
-    # numero NF (dois modelos)
     match_nf = re.search(r"NFFST:\s*(\S+)", texto)
     if match_nf:
         dados["numero_nf"] = match_nf.group(1)
@@ -115,7 +103,6 @@ def extrair_vivo(pdf_path: str) -> dict:
         if match_nf2:
             dados["numero_nf"] = match_nf2.group(1)
 
-    # numero série (dois modelos)
     match_serie = re.search(r"Série:\s*(\S+)", texto, re.IGNORECASE)
     if match_serie:
         dados["numero_serie"] = match_serie.group(1)
@@ -124,7 +111,6 @@ def extrair_vivo(pdf_path: str) -> dict:
         if match_serie2:
             dados["numero_serie"] = match_serie2.group(1)
 
-    # valor NF (dois modelos)
     match_valor_nf = re.search(r"TOTAL GERAL NOTA FISCAL\s*([\d.,]+)", texto)
     if match_valor_nf:
         dados["valor_nf"] = float(match_valor_nf.group(1).replace(".", "").replace(",", "."))
@@ -133,7 +119,6 @@ def extrair_vivo(pdf_path: str) -> dict:
         if match_valor_nf2:
             dados["valor_nf"] = float(match_valor_nf2.group(1).replace(".", "").replace(",", "."))
 
-    # base de cálculo ICMS (dois modelos)
     match_base_icms = re.search(r"Base de Cálculo:\s*R\$ ([\d.,]+)", texto)
     if match_base_icms:
         dados["base_calculo_icms"] = float(match_base_icms.group(1).replace(".", "").replace(",", "."))
@@ -142,7 +127,6 @@ def extrair_vivo(pdf_path: str) -> dict:
         if match_base_icms2:
             dados["base_calculo_icms"] = float(match_base_icms2.group(1).replace(".", "").replace(",", "."))
 
-    # aliquota ICMS (modelo antigo + novo)
     match_aliquota = re.search(r"ICMS:\s*(\d+)%", texto)
     if match_aliquota:
         dados["valor_aliquota"] = match_aliquota.group(1) + "%"
@@ -151,7 +135,6 @@ def extrair_vivo(pdf_path: str) -> dict:
         if match_aliquota2:
             dados["valor_aliquota"] = match_aliquota2.group(1)
 
-    # valor ICMS (dois modelos)
     match_valor_icms = re.search(r"Valor ICMS:\s*R\$ ([\d.,]+)", texto)
     if match_valor_icms:
         dados["valor_icms"] = float(match_valor_icms.group(1).replace(".", "").replace(",", "."))

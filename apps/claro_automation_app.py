@@ -24,12 +24,10 @@ class ClaroAutomationApp:
         self.CONTRATOS_URL = os.getenv("CONTRATOS_URL")
 
         self.LINUX_DOWNLOAD_DIR = os.getenv("LINUX_DOWNLOAD_DIR")
-        self.WINDOWS_DOWNLOAD_DIR = os.getenv("WINDOWS_DOWNLOAD_DIR")
         self.USER_DATA_DIR = os.getenv("CHROME_USER_DATA_DIR")
         self.PROFILE_DIRECTORY = os.getenv("CHROME_PROFILE_DIRECTORY")
 
-        self.download_dir = self.LINUX_DOWNLOAD_DIR if os.name == 'posix' else self.WINDOWS_DOWNLOAD_DIR
-        self.claro_base_folder = os.path.join(self.download_dir, "Claro")
+        self.claro_base_folder = os.path.join(self.LINUX_DOWNLOAD_DIR, "Claro")
         garantir_diretorio(self.claro_base_folder)
 
     def _setup_driver(self):

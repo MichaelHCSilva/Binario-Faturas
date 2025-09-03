@@ -15,7 +15,7 @@ from utils.popup_claro import PopupHandler
 from utils.session_manager import ensure_logged_in
 from utils.vivo_file_utils import wait_for_download_file, move_file, extract_zip
 from services.invoice_service import FaturaService
-from models.invoice_table import faturas
+from models.invoice_model import Fatura
 
 # --- Variáveis globais de logs ---
 log_stats = {
@@ -61,7 +61,7 @@ def process_invoice_menu_button(driver, popup_handler, download_dir, target_fold
                 pdf_path = os.path.join(download_dir, pdf_name)
                 final_path = move_file(pdf_path, target_folder, f"vivo_{pdf_name}", overwrite=False)
                 if final_path:
-                    FaturaService(target_folder, faturas).processar_fatura_pdf(final_path)
+                    FaturaService(target_folder).processar_fatura_pdf(final_path)
 
     except TimeoutException:
         print("[Info] Menu suspenso não encontrado, nenhuma fatura via menu disponível.")
@@ -136,7 +136,7 @@ def download_invoices_from_page(driver, popup_handler, download_dir, target_fold
                                 pdf_path = os.path.join(download_dir, f)
                                 final_path = move_file(pdf_path, target_folder, pdf_name, overwrite=False)
                                 if final_path:
-                                    FaturaService(target_folder, faturas).processar_fatura_pdf(final_path)
+                                    FaturaService(target_folder).processar_fatura_pdf(final_path)
                                     log_fatura(page_number, i, total_page, pdf_name, sucesso=True)
                                 else:
                                     log_fatura(page_number, i, total_page, pdf_name, sucesso=False,
@@ -150,7 +150,7 @@ def download_invoices_from_page(driver, popup_handler, download_dir, target_fold
                         pdf_path = os.path.join(download_dir, pdf_name_downloaded)
                         final_path = move_file(pdf_path, target_folder, pdf_name, overwrite=False)
                         if final_path:
-                            FaturaService(target_folder, faturas).processar_fatura_pdf(final_path)
+                            FaturaService(target_folder).processar_fatura_pdf(final_path)
                             log_fatura(page_number, i, total_page, pdf_name, sucesso=True)
                         else:
                             log_fatura(page_number, i, total_page, pdf_name, sucesso=False,

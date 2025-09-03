@@ -11,7 +11,7 @@ from selenium.common.exceptions import (
 from pages.claro.claro_contract_card import ContratoCard
 from typing import Callable, Any
 from services.invoice_service import FaturaService
-from models.invoice_table import faturas
+
 import os
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class FaturaPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, timeout)
         self.pasta_faturas = pasta_faturas  
-        self.fatura_service = FaturaService(self.pasta_faturas, faturas)
+        self.fatura_service = FaturaService(self.pasta_faturas)
     
     def _aguardar_renderizacao_contratos(self):
         logger.info("Aguardando renderização completa dos contratos...")

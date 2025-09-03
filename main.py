@@ -1,12 +1,10 @@
 import logging
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from config.database_config import DATABASE_URL
 from models.invoice_model import Base
+from config.database_engine import engine
 from apps.vivo_automation_app import ApplicationVivo
 from apps.claro_automation_app import ClaroAutomationApp
 from services.invoice_service import FaturaService
-from models.invoice_table import faturas
 import os
 
 load_dotenv()
@@ -18,8 +16,9 @@ logging.basicConfig(
 
 logging.getLogger("pdfminer").setLevel(logging.ERROR)
 logging.getLogger("pdfplumber").setLevel(logging.ERROR)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)  # esconde SQL cru
 
-engine = create_engine(DATABASE_URL, echo=True)
+# cria/verifica tabelas
 Base.metadata.create_all(bind=engine)
 logging.info("Tabela 'faturas' criada ou verificada com sucesso.")
 
@@ -37,7 +36,7 @@ def main():
             cnpj_folder = os.path.join(vivo_base, cnpj)
             if os.path.isdir(cnpj_folder):
                 logging.info(f"Processando faturas Vivo do CNPJ {cnpj}...")
-                service = FaturaService(cnpj_folder, faturas)
+                service = FaturaService(cnpj_folder)
                 service.processar_todas_faturas_na_pasta()
 
     logging.info("\nIniciando automação Claro...")
@@ -47,7 +46,7 @@ def main():
 
     claro_folder = os.path.join(PASTA_FATURAS, "Claro")
     if os.path.exists(claro_folder):
-        service = FaturaService(claro_folder, faturas)
+        service = FaturaService(claro_folder)
         logging.info("Processando faturas Claro...")
         service.processar_todas_faturas_na_pasta()
         

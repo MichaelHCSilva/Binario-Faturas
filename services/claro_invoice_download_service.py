@@ -7,7 +7,7 @@ from utils.download_utils import mover_e_copiar_arquivo
 from pages.claro.claro_pending_invoices_page import FaturasPendentesPage
 
 from services.invoice_service import FaturaService
-from models.invoice_table import faturas
+from models.invoice_model import Fatura
 
 logger = logging.getLogger(__name__)
 

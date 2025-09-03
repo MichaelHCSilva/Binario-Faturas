@@ -20,8 +20,8 @@ class ApplicationVivo:
         self.login_url = os.getenv("VIVO_LOGIN_URL")
 
         self.LINUX_DOWNLOAD_DIR = os.getenv("LINUX_DOWNLOAD_DIR")
-        self.WINDOWS_DOWNLOAD_DIR = os.getenv("WINDOWS_DOWNLOAD_DIR")
-        self.download_dir = self.LINUX_DOWNLOAD_DIR if os.name == 'posix' else self.WINDOWS_DOWNLOAD_DIR
+        self.USER_DATA_DIR = os.getenv("CHROME_USER_DATA_DIR")
+        self.PROFILE_DIRECTORY = os.getenv("CHROME_PROFILE_DIRECTORY")
 
         self.driver = None
         self.popup_handler = None
@@ -51,7 +51,7 @@ class ApplicationVivo:
             return
 
         try:
-            self.driver = create_driver(self.download_dir)
+            self.driver = create_driver(self.LINUX_DOWNLOAD_DIR)
             self.popup_handler = PopupHandler(self.driver)
             self.login_page = LoginPageVivo(self.driver, self.login_url)
 
@@ -79,7 +79,7 @@ class ApplicationVivo:
                 self.login_page,
                 self.usuario,
                 self.senha,
-                self.download_dir, 
+                self.LINUX_DOWNLOAD_DIR, 
                 skip_existing
             )
 
