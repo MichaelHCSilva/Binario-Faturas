@@ -8,7 +8,7 @@ def extrair_claro(pdf_path: str) -> list:
         "numero_contrato": None,
         "nome_fornecedor": None, 
         "valor_total": None,
-        "valores_multa": "2%",  
+        "valores_multa": None, 
         "valores_juros": None,
         "valores_retencoes": None,  
         "forma_pagamento": None,

@@ -15,13 +15,11 @@ class LoginPageVivo:
         self.driver.set_page_load_timeout(40)
 
     def open_login_page(self, retries=2):
-        logger.info(f"Abrindo página de login Vivo: {self.url}...")
         for attempt in range(retries):
             try:
                 start = time.time()
                 self.driver.get(self.url)
                 self.wait.until(EC.presence_of_element_located((By.ID, "login-input")))
-                logger.info(f"Página de login Vivo carregada. Tempo: {time.time()-start:.2f}s")
                 break
             except (TimeoutException, WebDriverException) as e:
                 logger.warning(f"Erro ao abrir página Vivo (tentativa {attempt+1}/{retries}): {e}")
