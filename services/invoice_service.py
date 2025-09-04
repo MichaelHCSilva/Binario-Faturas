@@ -47,17 +47,15 @@ class FaturaService:
 
     def salvar_fatura(self, dados: dict) -> str:
         try:
-            # Verificar existência
             existente = self.session.query(Fatura).filter_by(
                 numero_fatura=dados.get("numero_fatura"),
                 numero_contrato=dados.get("numero_contrato"),
-                numero_cnpj=dados.get("cnpj_fornecedor")  # <-- aqui use numero_cnpj
+                numero_cnpj=dados.get("cnpj_fornecedor") 
             ).first()
 
             if existente:
                 return "existente"
 
-            # Criar objeto ORM
             nova_fatura = Fatura(
                 id=uuid.uuid4(),
                 operadora=dados.get("operadora"),
@@ -81,7 +79,6 @@ class FaturaService:
                 numero_fatura=dados.get("numero_fatura"),
                 created_at=datetime.now(timezone.utc)
             )
-
 
             self.session.add(nova_fatura)
             self.session.commit()

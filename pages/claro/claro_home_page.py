@@ -2,18 +2,17 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from utils.popup_claro import PopupHandler
+from utils.popup_manager import PopupManager 
 
 class HomePage:
     def __init__(self, driver, timeout=10):
         self.driver = driver
         self.wait = WebDriverWait(driver, timeout)
-        self.popup_handler = PopupHandler(driver) 
+        self.popup_manager = PopupManager(driver, timeout=2) 
 
     def acessar_faturas(self):
         try:
-            print("Verificando e tentando fechar popups antes de interagir...")
-            self.popup_handler.close_known_popups()
+            self.popup_manager.handle_all()
 
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, "//li[@data-e2e-header-menu-invoices='']//span[text()='Contas']"))
@@ -28,8 +27,7 @@ class HomePage:
 
     def verificar_opcao_acessar_faturas(self):
         try:
-            print("Verificando e tentando fechar popups antes de interagir...")
-            self.popup_handler.close_known_popups()
+            self.popup_manager.handle_all()
 
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, "//li[@data-e2e-header-menu-invoices='']//span[text()='Contas']"))

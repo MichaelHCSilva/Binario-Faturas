@@ -12,7 +12,7 @@ class LoginPageVivo:
         self.driver = driver
         self.url = login_url
         self.wait = WebDriverWait(driver, timeout)
-        self.driver.set_page_load_timeout(120)
+        self.driver.set_page_load_timeout(40)
 
     def open_login_page(self, retries=2):
         logger.info(f"Abrindo página de login Vivo: {self.url}...")

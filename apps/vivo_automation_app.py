@@ -4,10 +4,10 @@ import logging
 from selenium.common.exceptions import InvalidSessionIdException
 from dotenv import load_dotenv
 from utils.driver.vivo_chrome_driver import create_driver
-from utils.popup_claro import PopupHandler
 from pages.vivo.vivo_login_page import LoginPageVivo
 from processors.vivo.customer_invoice_processor_vivo import process_customers
 from utils.session_manager import ensure_logged_in
+from utils.popup_manager import PopupManager 
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -52,12 +52,16 @@ class ApplicationVivo:
 
         try:
             self.driver = create_driver(self.LINUX_DOWNLOAD_DIR)
-            self.popup_handler = PopupHandler(self.driver)
+            
+            self.popup_manager = PopupManager(self.driver, timeout=2)
+            
             self.login_page = LoginPageVivo(self.driver, self.login_url)
 
-            logging.info("Realizando login inicial...")
             self.login_page.open_login_page()
+            
             self.login_page.perform_login(self.usuario, self.senha)
+            
+            self.popup_manager.handle_all()
 
             attempt = 0
             while attempt < max_login_attempts:
@@ -69,13 +73,14 @@ class ApplicationVivo:
                     logging.warning(f"Erro ao checar/refazer login (tentativa {attempt}): {e}")
                     time.sleep(2)
                     self.login_page.perform_login(self.usuario, self.senha)
+                    self.popup_manager.handle_all()
             else:
                 logging.error("Não foi possível garantir login após várias tentativas.")
                 return
 
             process_customers(
                 self.driver,
-                self.popup_handler,
+                self.popup_manager,
                 self.login_page,
                 self.usuario,
                 self.senha,

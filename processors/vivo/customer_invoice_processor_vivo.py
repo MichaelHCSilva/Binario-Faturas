@@ -8,8 +8,7 @@ from pages.vivo.customer_selector_page_vivo import CustomerSelectorPage
 from services.vivo_invoice_download_service import download_all_paginated_invoices
 from utils.session_manager import ensure_logged_in
 
-def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_download_base, skip_existing=True):
-
+def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_download_base, skip_existing=True):
     customer_selector = CustomerSelectorPage(driver)
     customer_selector.open_menu()
     cnpjs = customer_selector.get_cnpjs()
@@ -28,7 +27,7 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
 
         while tentativas < 3 and not sucesso:
             try:
-                popup_handler.force_remove_qualtrics_popup()
+                popup_manager.handle_all()
 
                 if ensure_logged_in(driver, login_page, usuario, senha):
                     customer_selector.open_menu()
@@ -45,7 +44,7 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
                     continue
 
                 home_page = HomePage(driver)
-                popup_handler.force_remove_qualtrics_popup()
+                popup_manager.handle_all()
 
                 if not home_page.verificar_opcao_acessar_faturas():
                     logging.info(f"{cnpj_atual} não possui 'Acessar faturas'. Pulando...")
@@ -55,13 +54,13 @@ def process_customers(driver, popup_handler, login_page, usuario, senha, pasta_d
                     tentativas += 1
                     continue
 
-                popup_handler.force_remove_qualtrics_popup()
+                popup_manager.handle_all()
                 home_page.acessar_faturas()
                 time.sleep(2)
 
                 download_all_paginated_invoices(
                     driver=driver,
-                    popup_handler=popup_handler,
+                    popup_manager=popup_manager,
                     download_dir=pasta_download_base,
                     base_folder=pasta_download_base,
                     cnpj=cnpj_atual,

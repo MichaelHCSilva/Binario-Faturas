@@ -11,20 +11,17 @@ from selenium.common.exceptions import (
     ElementClickInterceptedException
 )
 
-from utils.popup_claro import PopupHandler
+from utils.popup_manager import PopupManager
 from utils.session_manager import ensure_logged_in
 from utils.vivo_file_utils import wait_for_download_file, move_file, extract_zip
 from services.invoice_service import FaturaService
-from models.invoice_model import Fatura
 
-# --- Variáveis globais de logs ---
 log_stats = {
     "total": 0,
     "sucesso": 0,
     "falha": 0,
     "falhas": []
 }
-
 
 def log_fatura(page, pos, total_page, pdf_name, sucesso=True, motivo=None):
     log_stats["total"] += 1
@@ -39,7 +36,7 @@ def log_fatura(page, pos, total_page, pdf_name, sucesso=True, motivo=None):
         )
 
 
-def process_invoice_menu_button(driver, popup_handler, download_dir, target_folder, skip_existing=True):
+def process_invoice_menu_button(driver, popup_manager, download_dir, target_folder, skip_existing=True):
     try:
         menu_btn = WebDriverWait(driver, 5, 0.2).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-test-open-dropdown-button='true']"))
@@ -69,7 +66,7 @@ def process_invoice_menu_button(driver, popup_handler, download_dir, target_fold
         traceback.print_exc()
 
 
-def download_invoices_from_page(driver, popup_handler, download_dir, target_folder, cnpj,
+def download_invoices_from_page(driver, popup_manager, download_dir, target_folder, cnpj,
                                 login_page=None, usuario=None, senha=None,
                                 reopen_customer_fn=None, skip_existing=True, page_number=1):
     try:
@@ -77,8 +74,10 @@ def download_invoices_from_page(driver, popup_handler, download_dir, target_fold
             EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.mve-grid-row"))
         )
     except TimeoutException:
-        process_invoice_menu_button(driver, popup_handler, download_dir, target_folder, skip_existing)
+        process_invoice_menu_button(driver, popup_manager, download_dir, target_folder, skip_existing)
         return
+    
+    popup_manager.handle_all()
 
     def already_downloaded(invoice):
         if not skip_existing:
@@ -102,8 +101,7 @@ def download_invoices_from_page(driver, popup_handler, download_dir, target_fold
         print(f"[Info] Nenhuma fatura pendente na página {page_number}.")
         return
 
-    print(f"Página {page_number}/? de faturas")
-    popup_handler.close_known_popups()
+    print(f"Página {page_number}")
     total_page = len(pending)
 
     for i, invoice in enumerate(pending, 1):
@@ -166,7 +164,7 @@ def download_invoices_from_page(driver, popup_handler, download_dir, target_fold
                 break
 
 
-def download_all_paginated_invoices(driver, popup_handler, download_dir, base_folder, cnpj,
+def download_all_paginated_invoices(driver, popup_manager, download_dir, base_folder, cnpj,
                                     login_page=None, usuario=None, senha=None,
                                     reopen_customer_fn=None, skip_existing=True):
     global log_stats
@@ -189,10 +187,9 @@ def download_all_paginated_invoices(driver, popup_handler, download_dir, base_fo
 
     while True:
         if login_page and usuario and senha:
-            # ✅ corrigido: agora só passa 4 args
             ensure_logged_in(driver, login_page, usuario, senha)
 
-        download_invoices_from_page(driver, popup_handler, download_dir, target_folder, cnpj,
+        download_invoices_from_page(driver, popup_manager, download_dir, target_folder, cnpj,
                                     login_page, usuario, senha, reopen_customer_fn, skip_existing,
                                     page_number=page)
 

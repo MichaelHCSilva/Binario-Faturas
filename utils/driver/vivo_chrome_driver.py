@@ -9,7 +9,6 @@ def create_driver(download_dir):
     options = Options()
     options.add_argument("--start-maximized")
 
-    # Garantir que a pasta exista
     os.makedirs(download_dir, exist_ok=True)
 
     prefs = {
