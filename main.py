@@ -16,9 +16,8 @@ logging.basicConfig(
 
 logging.getLogger("pdfminer").setLevel(logging.ERROR)
 logging.getLogger("pdfplumber").setLevel(logging.ERROR)
-logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)  # esconde SQL cru
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)  
 
-# cria/verifica tabelas
 Base.metadata.create_all(bind=engine)
 logging.info("Tabela 'faturas' criada ou verificada com sucesso.")
 

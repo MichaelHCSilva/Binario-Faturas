@@ -41,31 +41,24 @@ def esperar_arquivo_download_concluido(caminho_arquivo: str, timeout: int = 30) 
     logger.warning(f"Timeout: arquivo {caminho_arquivo} não apareceu após {timeout}s.")
     return False
 
-def mover_e_copiar_arquivo(nome_arquivo_original: str, linux_dir: str, windows_dir: str, numero_contrato: str) -> None:
+def mover_arquivo(nome_arquivo_original: str, destino_dir: str, numero_contrato: str) -> None:
     if CHROME_DOWNLOAD_DIR is None:
         logger.error("A variável de ambiente 'CHROME_DOWNLOAD_DIR' não foi encontrada. Verifique o seu arquivo .env.")
         return
 
     origem = os.path.join(CHROME_DOWNLOAD_DIR, nome_arquivo_original)
-    destino_linux = os.path.join(linux_dir, nome_arquivo_original)
-    destino_windows = os.path.join(windows_dir, nome_arquivo_original)
+    destino = os.path.join(destino_dir, nome_arquivo_original)
 
-    logger.info(f"Iniciando mover/copiar para arquivo: {nome_arquivo_original}")
+    logger.info(f"Iniciando mover para arquivo: {nome_arquivo_original}")
     logger.info(f"Caminho origem: {origem}")
-    logger.info(f"Caminho destino Linux: {destino_linux}")
-    logger.info(f"Caminho destino Windows: {destino_windows}")
+    logger.info(f"Caminho destino: {destino}")
 
     if esperar_arquivo_download_concluido(origem):
         try:
-            garantir_diretorio(linux_dir)
-            garantir_diretorio(os.path.dirname(destino_windows))
-
-            shutil.move(origem, destino_linux)
-            logger.info(f"Arquivo movido para {destino_linux}")
-
-            shutil.copy2(destino_linux, destino_windows)
-            logger.info(f"Arquivo copiado para Windows: {destino_windows}")
+            garantir_diretorio(destino_dir)
+            shutil.move(origem, destino)
+            logger.info(f"Arquivo movido para {destino}")
         except Exception as e:
-            logger.error(f"Erro ao mover/copiar arquivo {nome_arquivo_original}: {e}", exc_info=True)
+            logger.error(f"Erro ao mover arquivo {nome_arquivo_original}: {e}", exc_info=True)
     else:
         logger.warning(f"Arquivo {origem} não foi baixado no diretório padrão do Chrome.")
