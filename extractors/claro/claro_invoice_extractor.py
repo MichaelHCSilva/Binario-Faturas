@@ -35,25 +35,25 @@ def extrair_claro(pdf_path: str) -> list:
 
     texto = re.sub(r'\s+', ' ', texto).strip()
 
-    match_contrato = re.search(r"Código[:\s]*(\d+/\d+)", texto, re.IGNORECASE)
+    match_contrato = re.search(r"C[oó]digo[:\s]*(\d+/\d+)", texto, re.IGNORECASE)
     if match_contrato:
         dados["numero_contrato"] = match_contrato.group(1).strip()
 
-    match_fatura = re.search(r"Número[:\s]*(\d+)", texto, re.IGNORECASE)
+    match_fatura = re.search(r"N[uú]mero[:\s]*(\d+)", texto, re.IGNORECASE)
     if match_fatura:
         dados["numero_fatura"] = match_fatura.group(1).strip()
 
-    match_numero_nf = re.search(r"Número[:\s]*(\d{6,})", texto, re.IGNORECASE)
+    match_numero_nf = re.search(r"(\d{6,})\s*N[uú]mero", texto, re.IGNORECASE)
     if match_numero_nf:
         dados["numero_nf"] = match_numero_nf.group(1).strip()
 
     match_fornecedor = re.search(
-        r"(Claro\s+NXT\s+Telecomunicações\s+S\.?A\.?)", texto, re.IGNORECASE
+        r"(Claro\s+NXT\s+Telecomunica[cç][oõ]es\s+S\.?A\.?)", texto, re.IGNORECASE
     )
     if match_fornecedor:
         dados["nome_fornecedor"] = match_fornecedor.group(1).strip()
 
-    match_emissao = re.search(r"Emissão[:\s]*(\d{2}/\d{2}/\d{4})", texto, re.IGNORECASE)
+    match_emissao = re.search(r"Emiss[aã]o[:\s]*(\d{2}/\d{2}/\d{4})", texto, re.IGNORECASE)
     if match_emissao:
         dados["data_emissao"] = datetime.strptime(match_emissao.group(1), "%d/%m/%Y").date()
 
@@ -65,9 +65,15 @@ def extrair_claro(pdf_path: str) -> list:
     if match_total:
         dados["valor_total"] = float(match_total.group(1).replace(".", "").replace(",", "."))
 
-    match_juros = re.search(r"juros .*?([\d.,]+)%", texto, re.IGNORECASE)
+    # Juros (ex.: "juros diários de 0,033%")
+    match_juros = re.search(r"juros\s+\w+\s+de\s+([\d.,]+)%", texto, re.IGNORECASE)
     if match_juros:
-        dados["valores_juros"] = match_juros.group(1) + "% ao mês"
+        dados["valores_juros"] = match_juros.group(1) + "% ao dia"
+
+    # Multa (ex.: "multa de 2%")
+    match_multa = re.search(r"multa\s+de\s+([\d.,]+)%", texto, re.IGNORECASE)
+    if match_multa:
+        dados["valores_multa"] = match_multa.group(1) + "%"
 
     if "DÉBITO AUTOMÁTICO" in texto.upper():
         dados["forma_pagamento"] = "Débito Automático"
@@ -76,17 +82,16 @@ def extrair_claro(pdf_path: str) -> list:
     if match_cnpj:
         dados["numero_cnpj"] = match_cnpj.group(1).strip()
 
-    match_valor_nf = re.search(r"VALOR\s*DA\s*NOTA\s*FISCAL[:\s]*([\d.,]+)", texto, re.IGNORECASE)
-    if not match_valor_nf:
-        match_valor_nf = re.search(r"VALOR\s*DA\s*NOTA\s*FISCAL[:\s]*.*?([\d]+[\.,]\d+)", texto, re.IGNORECASE)
+    # Valor da NF (na Claro vem como "TOTAL DA NOTA FISCAL")
+    match_valor_nf = re.search(r"TOTAL\s+DA\s+NOTA\s+FISCAL[:\s]*([\d.,]+)", texto, re.IGNORECASE)
     if match_valor_nf:
-        valor_nf_str = match_valor_nf.group(1).replace(",", ".")
+        valor_nf_str = match_valor_nf.group(1).replace(".", "").replace(",", ".")
         try:
             dados["valor_nf"] = float(valor_nf_str)
         except ValueError:
             dados["valor_nf"] = None
 
-    match_serie = re.search(r"SERIE[:\s]*([A-Z0-9]+)", texto, re.IGNORECASE)
+    match_serie = re.search(r"S[EÉ]RIE[:\s]*([A-Z0-9]+)", texto, re.IGNORECASE)
     if match_serie:
         dados["numero_serie"] = match_serie.group(1).strip()
 
@@ -94,7 +99,7 @@ def extrair_claro(pdf_path: str) -> list:
     if match_icms:
         dados["valor_icms"] = float(match_icms.group(1).replace(".", "").replace(",", "."))
 
-    match_base_icms = re.search(r"Base de Cálculo[:\s]*([\d.,]+)", texto, re.IGNORECASE)
+    match_base_icms = re.search(r"Base de C[áa]lculo[:\s]*([\d.,]+)", texto, re.IGNORECASE)
     if match_base_icms:
         dados["base_calculo_icms"] = float(match_base_icms.group(1).replace(".", "").replace(",", "."))
 

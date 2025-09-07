@@ -1,8 +1,5 @@
-import os
-import time
 import logging
 from selenium.webdriver.support.ui import WebDriverWait
-
 from utils.download_utils import mover_arquivo
 from pages.claro.claro_pending_invoices_page import FaturasPendentesPage
 
@@ -22,5 +19,7 @@ class DownloadService:
             logger.info(f"Nome do arquivo para download: {nome_arquivo}")
             mover_arquivo(nome_arquivo, linux_download_dir, numero_contrato)
             logger.info("Download concluído e arquivo movido com sucesso.")
+            return [nome_arquivo]  
         else:
             logger.info("Não foi possível iniciar o download da fatura. Nenhuma fatura pendente foi encontrada.")
+            return []
