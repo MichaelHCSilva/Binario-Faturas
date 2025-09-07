@@ -1,8 +1,7 @@
-import logging
-import os
+# claro_automation_app.py
+import logging, os, time
 from dotenv import load_dotenv
-from selenium.common.exceptions import TimeoutException, WebDriverException
-
+from selenium.common.exceptions import WebDriverException
 from pages.claro.claro_login_page import LoginPage
 from pages.claro.claro_invoice_page import FaturaPage
 from pages.claro.claro_pending_invoices_page import FaturasPendentesPage
@@ -22,7 +21,6 @@ class ClaroAutomationApp:
         self.SENHA_CLARO = os.getenv("SENHA_CLARO")
         self.CLARO_LOGIN_URL = os.getenv("CLARO_LOGIN_URL")
         self.CONTRATOS_URL = os.getenv("CONTRATOS_URL")
-
         self.LINUX_DOWNLOAD_DIR = os.getenv("LINUX_DOWNLOAD_DIR")
         self.USER_DATA_DIR = os.getenv("CHROME_USER_DATA_DIR")
         self.PROFILE_DIRECTORY = os.getenv("CHROME_PROFILE_DIRECTORY")
@@ -44,85 +42,66 @@ class ClaroAutomationApp:
             return False
 
     def _login(self):
-        login_page = LoginPage(self.driver, self.CLARO_LOGIN_URL)
-        popup_manager = PopupManager(self.driver, timeout=2)
-        
         try:
-            login_page.open_login_page(retries=3)
+            login_page = LoginPage(self.driver, self.CLARO_LOGIN_URL)
+            popup_manager = PopupManager(self.driver, timeout=2)
+
+            login_page.open_login_page()
+            popup_manager.handle_all()
+
+            from selenium.webdriver.support.ui import WebDriverWait
+            WebDriverWait(self.driver, 10).until(
+                lambda d: d.execute_script("return document.readyState") == "complete"
+            )
+            time.sleep(1)
+
+            if login_page.esta_logado():
+                logger.info("Sessão já ativa, pulando login.")
+                return
+
+            logger.info("Usuário não está logado. Iniciando login...")
+            login_page.perform_login(self.USUARIO_CLARO, self.SENHA_CLARO)
+
+            popup_manager.handle_all()
+            WebDriverWait(self.driver, 10).until(
+                lambda d: d.execute_script("return document.readyState") == "complete"
+            )
+            time.sleep(1)
+            logger.info("Login concluído e página estabilizada.")
         except Exception as e:
-            logger.error(f"Falha ao abrir a página de login: {type(e).__name__} - {e}", exc_info=True)
-            return
-
-        popup_manager.handle_all()
-
-        if login_page.esta_logado():
-            logger.info("Sessão já ativa, pulando login.")
-            return
-
-        logger.info("Usuário não está logado. Iniciando login...")
-
-        try:
-            login_page.click_entrar()
-            login_page.selecionar_minha_claro_residencial()
-        except Exception as e:
-            logger.error(f"Erro ao iniciar login: {type(e).__name__} - {e}", exc_info=True)
-            return
-
-        popup_manager.handle_all()
-
-        try:
-            login_page.preencher_login_usuario(self.USUARIO_CLARO)
-            login_page.clicar_continuar()
-            login_page.preencher_senha(self.SENHA_CLARO)
-            login_page.clicar_botao_acessar()
-        except Exception as e:
-            logger.error(f"Erro ao preencher login/senha e acessar: {type(e).__name__} - {e}", exc_info=True)
-            return
-
-        if login_page.esta_logado():
-            logger.info("Login realizado com sucesso.")
-        else:
-            logger.error("Falha: login não foi concluído mesmo após preencher usuário e senha.")
+            logger.error(f"Erro durante o login: {type(e).__name__} - {e}", exc_info=True)
+            raise  
 
     def _process_contracts(self):
-        fatura_page = FaturaPage(self.driver, self.claro_base_folder)
-        faturas_pendentes_page = FaturasPendentesPage(self.driver)
-        download_service = DownloadService(self.driver, faturas_pendentes_page)
-        popup_manager = PopupManager(self.driver, timeout=2) 
-        
-        def download_faturas_callback(numero_contrato: str):
-            try:
-                arquivos_baixados = download_service.baixar_faturas(
-                    numero_contrato,
-                    self.claro_base_folder,
-                    self.claro_base_folder
-                )
-                return arquivos_baixados
-            except Exception as e:
-                logger.error(
-                    f"Erro ao baixar faturas do contrato {numero_contrato}: {type(e).__name__} - {e}",
-                    exc_info=True
-                )
-                return []
+        try:
+            fatura_page = FaturaPage(self.driver, self.claro_base_folder)
+            faturas_pendentes_page = FaturasPendentesPage(self.driver)
+            download_service = DownloadService(self.driver, faturas_pendentes_page)
 
-        fatura_page.processar_todos_contratos_ativos(
-            callback_processamento=download_faturas_callback,
-            contratos_url=self.CONTRATOS_URL
-        )
+            def download_faturas_callback(numero_contrato: str):
+                try:
+                    return download_service.baixar_faturas(numero_contrato, self.claro_base_folder, self.claro_base_folder)
+                except Exception as e:
+                    logger.error(f"Erro ao baixar faturas do contrato {numero_contrato}: {type(e).__name__} - {e}", exc_info=True)
+                    return []
+
+            fatura_page.processar_todos_contratos_ativos(download_faturas_callback, self.CONTRATOS_URL)
+        except Exception as e:
+            logger.error(f"Erro ao processar contratos: {type(e).__name__} - {e}", exc_info=True)
+            raise 
 
     def run(self):
         if not self._setup_driver():
             return
 
         try:
-            logger.info("Iniciando o processo de login...")
+            logger.info("Iniciando processo de login...")
             self._login()
 
-            logger.info("Iniciando o processo de download de faturas...")
+            logger.info("Iniciando processo de download de faturas...")
             self._process_contracts()
-
         except Exception as e:
-            logger.error(f"Erro geral na execução: {type(e).__name__} - {e}", exc_info=True)
+            logger.error(f"Erro inesperado na automação Claro: {type(e).__name__} - {e}", exc_info=True)
         finally:
             input("⏸ Pressione Enter para encerrar...")
             if self.driver:
