@@ -17,9 +17,19 @@ class DownloadService:
 
         if nome_arquivo:
             logger.info(f"Nome do arquivo para download: {nome_arquivo}")
-            mover_arquivo(nome_arquivo, linux_download_dir, numero_contrato)
-            logger.info("Download concluído e arquivo movido com sucesso.")
-            return [nome_arquivo]  
+            status = mover_arquivo(nome_arquivo, linux_download_dir, numero_contrato)
+
+            if status == "movido":
+                logger.info("Download e movimento concluídos com sucesso.")
+            elif status == "existia":
+                logger.info("Arquivo já existia no destino. Nenhum movimento necessário.")
+            elif status == "nao_encontrado":
+                logger.warning("Arquivo não foi encontrado para mover.")
+            else:
+                logger.error("Ocorreu um erro ao mover o arquivo.")
+
+            return [nome_arquivo]
+
         else:
             logger.info("Não foi possível iniciar o download da fatura. Nenhuma fatura pendente foi encontrada.")
             return []

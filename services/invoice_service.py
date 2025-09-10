@@ -50,7 +50,7 @@ class FaturaService:
             existente = self.session.query(Fatura).filter_by(
                 numero_fatura=dados.get("numero_fatura"),
                 numero_contrato=dados.get("numero_contrato"),
-                numero_cnpj=dados.get("cnpj_fornecedor") 
+                numero_cnpj=dados.get("numero_cnpj") 
             ).first()
 
             if existente:
@@ -113,7 +113,7 @@ class FaturaService:
                     falhas.append({
                         "numero_fatura": dados.get("numero_fatura"),
                         "numero_contrato": dados.get("numero_contrato"),
-                        "cnpj_fornecedor": dados.get("cnpj_fornecedor"),
+                        "cnpj_fornecedor": dados.get("numero_cnpj"),
                         "erro": resultado
                     })
 
