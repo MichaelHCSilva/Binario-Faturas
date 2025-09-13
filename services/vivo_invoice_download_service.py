@@ -35,15 +35,14 @@ def log_fatura(page, pos, total_page, pdf_name, sucesso=True, motivo=None):
             f"- Página {page}, posição {pos}: {pdf_name} ({motivo})"
         )
 
-
 def process_invoice_menu_button(driver, popup_manager, download_dir, target_folder, skip_existing=True):
     try:
-        menu_btn = WebDriverWait(driver, 5, 0.2).until(
+        menu_btn = WebDriverWait(driver, 8, 0.2).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-test-open-dropdown-button='true']"))
         )
         driver.execute_script("arguments[0].click();", menu_btn)
 
-        dropdown = WebDriverWait(driver, 5, 0.2).until(
+        dropdown = WebDriverWait(driver, 8, 0.2).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, "div.dropdown-menu"))
         )
 
@@ -53,7 +52,7 @@ def process_invoice_menu_button(driver, popup_manager, download_dir, target_fold
 
         if boleto_link:
             driver.execute_script("arguments[0].click();", boleto_link)
-            pdf_name = wait_for_download_file(download_dir, before_files)
+            pdf_name = wait_for_download_file(download_dir, before_files, extension=".pdf")
             if pdf_name:
                 pdf_path = os.path.join(download_dir, pdf_name)
                 final_path = move_file(pdf_path, target_folder, f"vivo_{pdf_name}", overwrite=False)
@@ -65,17 +64,35 @@ def process_invoice_menu_button(driver, popup_manager, download_dir, target_fold
     except Exception:
         traceback.print_exc()
 
-
 def download_invoices_from_page(driver, popup_manager, download_dir, target_folder, cnpj,
                                 login_page=None, usuario=None, senha=None,
                                 reopen_customer_fn=None, skip_existing=True, page_number=1):
-    try:
-        rows = WebDriverWait(driver, 5, 0.2).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.mve-grid-row"))
-        )
-    except TimeoutException:
-        process_invoice_menu_button(driver, popup_manager, download_dir, target_folder, skip_existing)
-        return
+
+    attempts = 0
+    rows = []
+    while attempts < 2:
+        try:
+            rows = WebDriverWait(driver, 15, 0.3).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.mve-grid-row"))
+            )
+            break
+        except TimeoutException:
+            attempts += 1
+            if attempts == 1:
+                print(f"[Info] Página {page_number}: nenhuma fatura visível, tentando refresh...")
+                driver.refresh()
+                time.sleep(1)
+            elif attempts == 2 and reopen_customer_fn:
+                print(f"[Info] Página {page_number}: reabrindo cliente...")
+                try:
+                    reopen_customer_fn(driver, cnpj)
+                    time.sleep(1)
+                except Exception:
+                    traceback.print_exc()
+            else:
+                print(f"[Info] Nenhuma fatura disponível na página {page_number}.")
+                process_invoice_menu_button(driver, popup_manager, download_dir, target_folder, skip_existing)
+                return
     
     popup_manager.handle_all()
 
@@ -105,7 +122,6 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
     total_page = len(pending)
 
     for i, invoice in enumerate(pending, 1):
-        attempts = 0
         pdf_name = "desconhecido.pdf"
         try:
             customer = invoice.find_element(By.CSS_SELECTOR, "div[data-test-secondary-info] span").text.strip()
@@ -114,7 +130,8 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
         except Exception:
             pass
 
-        while attempts < 3:
+        success = False
+        for attempt in range(2): 
             try:
                 before_files = set(os.listdir(download_dir))
                 btn = invoice.find_element(By.XPATH, ".//button[contains(., 'Baixar agora')]")
@@ -139,8 +156,11 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
                                 else:
                                     log_fatura(page_number, i, total_page, pdf_name, sucesso=False,
                                                motivo="não cadastrada no banco")
+                        success = True
                         break
+
                 except NoSuchElementException:
+
                     pdf_btn = invoice.find_element(By.XPATH, ".//button[contains(., 'Boleto (.pdf)')]")
                     driver.execute_script("arguments[0].click();", pdf_btn)
                     pdf_name_downloaded = wait_for_download_file(download_dir, before_files, extension=".pdf")
@@ -153,16 +173,18 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
                         else:
                             log_fatura(page_number, i, total_page, pdf_name, sucesso=False,
                                        motivo="não cadastrada no banco")
-                    break
+                        success = True
+                        break
 
             except (ElementClickInterceptedException, StaleElementReferenceException):
                 time.sleep(0.3)
-                attempts += 1
             except Exception:
                 log_fatura(page_number, i, total_page, pdf_name, sucesso=False, motivo="erro inesperado")
                 traceback.print_exc()
                 break
 
+        if not success:
+            log_fatura(page_number, i, total_page, pdf_name, sucesso=False, motivo="falhou após 2 tentativas")
 
 def download_all_paginated_invoices(driver, popup_manager, download_dir, base_folder, cnpj,
                                     login_page=None, usuario=None, senha=None,
@@ -175,15 +197,32 @@ def download_all_paginated_invoices(driver, popup_manager, download_dir, base_fo
 
     page = 1
     first = ""
-    try:
-        first = WebDriverWait(driver, 5, 0.2).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "div.mve-grid-row:first-of-type div[data-test-secondary-info] span")
-            )
-        ).text.strip()
-    except TimeoutException:
-        print("[Info] Nenhuma fatura disponível nesta conta.")
-        return
+
+    attempts = 0
+    while attempts < 2:
+        try:
+            first = WebDriverWait(driver, 15, 0.3).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "div.mve-grid-row:first-of-type div[data-test-secondary-info] span")
+                )
+            ).text.strip()
+            break
+        except TimeoutException:
+            attempts += 1
+            if attempts == 1:
+                print("[Info] Nenhuma fatura visível, tentando refresh...")
+                driver.refresh()
+                time.sleep(1)
+            elif attempts == 2 and reopen_customer_fn:
+                print("[Info] Nenhuma fatura visível, reabrindo cliente...")
+                try:
+                    reopen_customer_fn(driver, cnpj)
+                    time.sleep(1)
+                except Exception:
+                    traceback.print_exc()
+            else:
+                print("[Info] Nenhuma fatura disponível nesta conta.")
+                return
 
     while True:
         if login_page and usuario and senha:
@@ -194,14 +233,14 @@ def download_all_paginated_invoices(driver, popup_manager, download_dir, base_fo
                                     page_number=page)
 
         try:
-            next_btn = WebDriverWait(driver, 5, 0.2).until(
+            next_btn = WebDriverWait(driver, 8, 0.2).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "li.button--pagination-next > button"))
             )
             if not next_btn.is_enabled():
                 break
             driver.execute_script("arguments[0].click();", next_btn)
 
-            WebDriverWait(driver, 5, 0.2).until(
+            WebDriverWait(driver, 15, 0.3).until(
                 lambda d: d.find_element(
                     By.CSS_SELECTOR,
                     "div.mve-grid-row:first-of-type div[data-test-secondary-info] span"

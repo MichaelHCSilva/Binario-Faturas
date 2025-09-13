@@ -1,4 +1,4 @@
-#claro_invoice_page
+# claro_invoice_page.py
 import logging, os
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -65,9 +65,19 @@ class FaturaPage:
 
                     if card.clicar_selecionar():
                         numero_contrato = card.obter_numero_contrato()
-                        arquivos = callback_processamento(numero_contrato)
+                        arquivos = []
+                        attempts = 0
+                        while attempts < 3 and not arquivos:
+                            try:
+                                arquivos = callback_processamento(numero_contrato)
+                            except Exception as e:
+                                logger.warning(f"Tentativa {attempts+1}/3 falhou para contrato {numero_contrato}: {e}")
+                            attempts += 1
+                            if not arquivos and attempts >= 3:
+                                logger.error(f"Contrato {numero_contrato} não pôde ser processado após 3 tentativas.")
                         for arquivo in arquivos:
                             self.fatura_service.processar_fatura_pdf(os.path.join(self.fatura_service.pasta_faturas, arquivo))
+
                         self._voltar_para_pagina_contratos(contratos_url)
                         for _ in range(pagina_atual-1):
                             if not self._avancar_para_proxima_pagina(): break
@@ -104,9 +114,19 @@ class FaturaPage:
                 card = ContratoCard(self.driver, card_element)
                 if card.obter_numero_contrato() == numero_contrato:
                     if card.clicar_selecionar():
-                        arquivos = callback_processamento(numero_contrato)
+                        arquivos = []
+                        attempts = 0
+                        while attempts < 3 and not arquivos:
+                            try:
+                                arquivos = callback_processamento(numero_contrato)
+                            except Exception as e:
+                                logger.warning(f"Tentativa {attempts+1}/3 falhou para contrato {numero_contrato}: {e}")
+                            attempts += 1
+                            if not arquivos and attempts >= 3:
+                                logger.error(f"Contrato {numero_contrato} não pôde ser processado após 3 tentativas.")
                         for arquivo in arquivos:
                             self.fatura_service.processar_fatura_pdf(os.path.join(self.fatura_service.pasta_faturas, arquivo))
+
                         self._voltar_para_pagina_contratos(self.driver.current_url)
                         return
             if not self._avancar_para_proxima_pagina():

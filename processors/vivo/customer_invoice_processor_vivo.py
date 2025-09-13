@@ -2,7 +2,7 @@
 import os
 import time
 import logging
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 from pages.claro.claro_home_page import HomePage
 from pages.vivo.customer_selector_page_vivo import CustomerSelectorPage
 from services.vivo_invoice_download_service import download_all_paginated_invoices
@@ -47,7 +47,7 @@ def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_d
                 popup_manager.handle_all()
 
                 if not home_page.verificar_opcao_acessar_faturas():
-                    logging.info(f"{cnpj_atual} não possui 'Acessar faturas'. Pulando...")
+                    logging.info(f"{cnpj_atual} não possui opção 'Acessar faturas'. Pulando...")
                     driver.back()
                     time.sleep(2)
                     customer_selector.open_menu()
@@ -78,8 +78,17 @@ def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_d
 
             except Exception as e:
                 import traceback
-                logging.error(f"Erro processando {cnpj_atual}: {e}")
-                logging.error(traceback.format_exc())
+                if isinstance(e, TimeoutException):
+                    logging.error(f"Erro processando {cnpj_atual}: Tempo limite ao aguardar a página ou elemento.")
+                elif isinstance(e, NoSuchElementException):
+                    logging.error(f"Erro processando {cnpj_atual}: Elemento esperado não foi encontrado na página.")
+                elif isinstance(e, WebDriverException):
+                    logging.error(f"Erro processando {cnpj_atual}: Problema de comunicação com o navegador.")
+                else:
+                    logging.error(f"Erro processando {cnpj_atual}: Erro inesperado ({type(e).__name__}).")
+
+                logging.debug(traceback.format_exc())
+
                 tentativas += 1
                 time.sleep(3)
 
