@@ -1,5 +1,6 @@
 # claro_login_page.py
-import logging, time
+import logging
+import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -26,10 +27,13 @@ class LoginPage:
                 WebDriverWait(self.driver, 10).until(
                     lambda d: d.execute_script("return document.readyState") == "complete"
                 )
+                logger.info("Página de login aberta com sucesso.")
                 break
             except (TimeoutException, WebDriverException):
-                if attempt == retries: 
+                if attempt == retries:
+                    logger.warning("Falha técnica ao abrir página de login (tempo limite).")
                     raise
+                logger.warning(f"Tentativa {attempt} falhou ao abrir página de login. Repetindo...")
                 time.sleep(2)
 
     def esta_logado(self):
@@ -38,7 +42,7 @@ class LoginPage:
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".dashboard"))
             )
             return True
-        except TimeoutException: 
+        except TimeoutException:
             return False
 
     def perform_login(self, usuario: str, senha: str):
@@ -53,50 +57,75 @@ class LoginPage:
         WebDriverWait(self.driver, 15).until(
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
+        logger.info("Login concluído e página carregada com sucesso.")
 
     def click_entrar(self):
-        btn = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH,
-                "//button[contains(@class,'mdn-Button--primaryInverse') and .//span[text()='Entrar']]"
-            ))
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
-        self.driver.execute_script("arguments[0].click();", btn)
+        try:
+            btn = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH,
+                    "//button[contains(@class,'mdn-Button--primaryInverse') and .//span[text()='Entrar']]"
+                ))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
+            self.driver.execute_script("arguments[0].click();", btn)
+            logger.info("Botão 'Entrar' clicado com sucesso.")
+        except Exception:
+            logger.warning("Falha técnica ao clicar no botão 'Entrar'.")
 
     def selecionar_minha_claro_residencial(self):
-        link = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH,
-                "//a[contains(@class,'mdn-Shortcut') and .//p[text()='Minha Claro Residencial']]"
-            ))
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", link)
-        self.driver.execute_script("arguments[0].click();", link)
+        try:
+            link = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH,
+                    "//a[contains(@class,'mdn-Shortcut') and .//p[text()='Minha Claro Residencial']]"
+                ))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", link)
+            self.driver.execute_script("arguments[0].click();", link)
+            logger.info("Atalho 'Minha Claro Residencial' selecionado com sucesso.")
+        except Exception:
+            logger.warning("Falha técnica ao selecionar 'Minha Claro Residencial'.")
 
     def preencher_login_usuario(self, usuario: str):
-        campo = self.wait.until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR,'input[data-testid="cpfCnpj"]'))
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
-        campo.clear()
-        campo.send_keys(usuario)
+        try:
+            campo = self.wait.until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[data-testid="cpfCnpj"]'))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
+            campo.clear()
+            campo.send_keys(usuario)
+            logger.info("Usuário preenchido no campo de login.")
+        except Exception:
+            logger.warning("Falha técnica ao preencher o usuário no campo de login.")
 
     def clicar_continuar(self):
-        btn = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH,"//button[@data-testid='continuar']"))
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
-        self.driver.execute_script("arguments[0].click();", btn)
+        try:
+            btn = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//button[@data-testid='continuar']"))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
+            self.driver.execute_script("arguments[0].click();", btn)
+            logger.info("Botão 'Continuar' clicado com sucesso.")
+        except Exception:
+            logger.warning("Falha técnica ao clicar no botão 'Continuar'.")
 
     def preencher_senha(self, senha: str):
-        campo = self.wait.until(
-            EC.visibility_of_element_located((By.ID,"password"))
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
-        campo.send_keys(senha)
+        try:
+            campo = self.wait.until(
+                EC.visibility_of_element_located((By.ID, "password"))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
+            campo.send_keys(senha)
+            logger.info("Senha preenchida com sucesso.")
+        except Exception:
+            logger.warning("Falha técnica ao preencher a senha.")
 
     def clicar_botao_acessar(self):
-        btn = self.wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR,"button[data-testid='acessar']"))
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
-        self.driver.execute_script("arguments[0].click();", btn)
+        try:
+            btn = self.wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-testid='acessar']"))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
+            self.driver.execute_script("arguments[0].click();", btn)
+            logger.info("Botão 'Acessar' clicado com sucesso.")
+        except Exception:
+            logger.warning("Falha técnica ao clicar no botão 'Acessar'.")

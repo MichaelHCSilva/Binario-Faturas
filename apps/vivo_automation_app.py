@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from utils.driver.vivo_chrome_driver import create_driver
 from pages.vivo.vivo_login_page import LoginPageVivo
 from processors.vivo.customer_invoice_processor_vivo import process_customers
-from utils.session_manager import ensure_logged_in
+from utils.session_manager_vivo import ensure_logged_in
 from utils.popup_manager import PopupManager 
 
 logger = logging.getLogger(__name__)

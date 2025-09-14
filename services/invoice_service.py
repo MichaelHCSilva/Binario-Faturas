@@ -2,7 +2,6 @@ import os
 import uuid
 import pdfplumber
 import logging
-import traceback
 from datetime import datetime, timezone
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
@@ -13,7 +12,6 @@ from extractors.claro.claro_invoice_extractor import extrair_claro
 from extractors.vivo.vivo_invoice_extractor import extrair_vivo
 
 logger = logging.getLogger(__name__)
-
 Session = sessionmaker(bind=engine)
 
 class FaturaService:
@@ -37,13 +35,17 @@ class FaturaService:
         return []
 
     def ler_texto_pdf(self, caminho_pdf: str) -> str:
-        texto_pdf = ""
-        with pdfplumber.open(caminho_pdf) as pdf:
-            for pagina in pdf.pages:
-                t = pagina.extract_text()
-                if t:
-                    texto_pdf += t + "\n"
-        return texto_pdf
+        try:
+            texto_pdf = ""
+            with pdfplumber.open(caminho_pdf) as pdf:
+                for pagina in pdf.pages:
+                    t = pagina.extract_text()
+                    if t:
+                        texto_pdf += t + "\n"
+            return texto_pdf
+        except Exception as e:
+            logger.error(f"Falha técnica ao ler PDF '{os.path.basename(caminho_pdf)}'. Erro: {type(e).__name__}")
+            return ""
 
     def salvar_fatura(self, dados: dict) -> str:
         try:
@@ -86,7 +88,11 @@ class FaturaService:
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            logger.error(f"Erro ao salvar fatura: {e}", exc_info=True)
+            logger.error(f"Falha técnica ao salvar fatura no banco de dados. Erro: {type(e).__name__}")
+            return f"erro: {str(e)}"
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Falha técnica inesperada ao salvar fatura. Erro: {type(e).__name__}")
             return f"erro: {str(e)}"
 
     def processar_fatura_pdf(self, caminho_pdf: str) -> dict:
@@ -96,11 +102,15 @@ class FaturaService:
 
         try:
             texto_pdf = self.ler_texto_pdf(caminho_pdf)
+            if not texto_pdf:
+                logger.warning(f"Falha técnica: texto não pôde ser extraído de '{os.path.basename(caminho_pdf)}'.")
+                return {"inseridas": 0, "existentes": 0, "falhas": []}
+
             operadora = self.identificar_operadora(texto_pdf)
             lista_faturas = self.extrair_operadora(operadora, caminho_pdf)
 
             if not lista_faturas:
-                logger.warning(f"Nenhuma fatura extraída de {os.path.basename(caminho_pdf)}.")
+                logger.warning(f"Nenhuma fatura extraída de '{os.path.basename(caminho_pdf)}'.")
                 return {"inseridas": 0, "existentes": 0, "falhas": []}
 
             for dados in lista_faturas:
@@ -117,12 +127,13 @@ class FaturaService:
                         "erro": resultado
                     })
 
-        except Exception:
+        except Exception as e:
+            logger.error(f"Falha técnica ao processar PDF '{os.path.basename(caminho_pdf)}'. Erro: {type(e).__name__}")
             falhas.append({
                 "numero_fatura": None,
                 "numero_contrato": None,
                 "cnpj_fornecedor": None,
-                "erro": traceback.format_exc()
+                "erro": str(e)
             })
         
         return {"inseridas": inseridas, "existentes": existentes, "falhas": falhas}

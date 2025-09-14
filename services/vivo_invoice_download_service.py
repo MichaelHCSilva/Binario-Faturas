@@ -12,7 +12,7 @@ from selenium.common.exceptions import (
 )
 
 from utils.popup_manager import PopupManager
-from utils.session_manager import ensure_logged_in
+from utils.session_manager_vivo import ensure_logged_in
 from utils.vivo_file_utils import wait_for_download_file, move_file, extract_zip
 from services.invoice_service import FaturaService
 

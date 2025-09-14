@@ -6,7 +6,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 from pages.claro.claro_home_page import HomePage
 from pages.vivo.customer_selector_page_vivo import CustomerSelectorPage
 from services.vivo_invoice_download_service import download_all_paginated_invoices
-from utils.session_manager import ensure_logged_in
+from utils.session_manager_vivo import ensure_logged_in
 
 def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_download_base, skip_existing=True):
     customer_selector = CustomerSelectorPage(driver)
