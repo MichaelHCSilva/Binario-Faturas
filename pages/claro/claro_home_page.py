@@ -20,7 +20,6 @@ class HomePage:
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, "//li[@data-nav-menu-dropdown-item='invoices']//span[text()='Acessar faturas']")
             )).click()
-            logging.info("Seção 'Acessar faturas' acessada com sucesso.")
         except Exception:
             logging.warning("Falha em acessar 'Acessar faturas' (tempo limite atingido).")
 

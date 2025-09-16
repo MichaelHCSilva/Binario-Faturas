@@ -1,6 +1,7 @@
 import os
 import time
 import traceback
+import logging
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -16,6 +17,12 @@ from utils.session_manager_vivo import ensure_logged_in
 from utils.vivo_file_utils import wait_for_download_file, move_file, extract_zip
 from services.invoice_service import FaturaService
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
+
 log_stats = {
     "total": 0,
     "sucesso": 0,
@@ -27,10 +34,10 @@ def log_fatura(page, pos, total_page, pdf_name, sucesso=True, motivo=None):
     log_stats["total"] += 1
     if sucesso:
         log_stats["sucesso"] += 1
-        print(f"Fatura {pos}/{total_page} baixada e processada com sucesso: {pdf_name}")
+        logger.info(f"Fatura {pos}/{total_page} baixada e processada com sucesso: {pdf_name}")
     else:
         log_stats["falha"] += 1
-        print(f"Fatura {pos}/{total_page} falha ao processar: {pdf_name} — {motivo}")
+        logger.error(f"Fatura {pos}/{total_page} falha ao processar: {pdf_name} — {motivo}")
         log_stats["falhas"].append(
             f"- Página {page}, posição {pos}: {pdf_name} ({motivo})"
         )
@@ -60,9 +67,9 @@ def process_invoice_menu_button(driver, popup_manager, download_dir, target_fold
                     FaturaService(target_folder).processar_fatura_pdf(final_path)
 
     except TimeoutException:
-        print("[Info] Menu suspenso não encontrado, nenhuma fatura via menu disponível.")
+        logger.info("Menu suspenso não encontrado, nenhuma fatura via menu disponível.")
     except Exception:
-        traceback.print_exc()
+        logger.exception("Erro inesperado ao processar menu de faturas")
 
 def download_invoices_from_page(driver, popup_manager, download_dir, target_folder, cnpj,
                                 login_page=None, usuario=None, senha=None,
@@ -79,21 +86,21 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
         except TimeoutException:
             attempts += 1
             if attempts == 1:
-                print(f"[Info] Página {page_number}: nenhuma fatura visível, tentando refresh...")
+                logger.info(f"Página {page_number}: nenhuma fatura visível, tentando refresh...")
                 driver.refresh()
                 time.sleep(1)
             elif attempts == 2 and reopen_customer_fn:
-                print(f"[Info] Página {page_number}: reabrindo cliente...")
+                logger.info(f"Página {page_number}: reabrindo cliente...")
                 try:
                     reopen_customer_fn(driver, cnpj)
                     time.sleep(1)
                 except Exception:
-                    traceback.print_exc()
+                    logger.exception("Erro ao reabrir cliente")
             else:
-                print(f"[Info] Nenhuma fatura disponível na página {page_number}.")
+                logger.info(f"Nenhuma fatura disponível na página {page_number}.")
                 process_invoice_menu_button(driver, popup_manager, download_dir, target_folder, skip_existing)
                 return
-    
+
     popup_manager.handle_all()
 
     def already_downloaded(invoice):
@@ -115,10 +122,10 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
     ]
 
     if not pending:
-        print(f"[Info] Nenhuma fatura pendente na página {page_number}.")
+        logger.info(f"Nenhuma fatura pendente na página {page_number}.")
         return
 
-    print(f"Página {page_number}")
+    logger.info(f"Página {page_number}")
     total_page = len(pending)
 
     for i, invoice in enumerate(pending, 1):
@@ -180,7 +187,7 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
                 time.sleep(0.3)
             except Exception:
                 log_fatura(page_number, i, total_page, pdf_name, sucesso=False, motivo="erro inesperado")
-                traceback.print_exc()
+                logger.exception("Erro inesperado ao baixar fatura")
                 break
 
         if not success:
@@ -210,18 +217,18 @@ def download_all_paginated_invoices(driver, popup_manager, download_dir, base_fo
         except TimeoutException:
             attempts += 1
             if attempts == 1:
-                print("[Info] Nenhuma fatura visível, tentando refresh...")
+                logger.info("Nenhuma fatura visível, tentando refresh...")
                 driver.refresh()
                 time.sleep(1)
             elif attempts == 2 and reopen_customer_fn:
-                print("[Info] Nenhuma fatura visível, reabrindo cliente...")
+                logger.info("Nenhuma fatura visível, reabrindo cliente...")
                 try:
                     reopen_customer_fn(driver, cnpj)
                     time.sleep(1)
                 except Exception:
-                    traceback.print_exc()
+                    logger.exception("Erro ao reabrir cliente")
             else:
-                print("[Info] Nenhuma fatura disponível nesta conta.")
+                logger.info("Nenhuma fatura disponível nesta conta.")
                 return
 
     while True:
@@ -254,13 +261,13 @@ def download_all_paginated_invoices(driver, popup_manager, download_dir, base_fo
         except TimeoutException:
             break
         except Exception:
-            traceback.print_exc()
+            logger.exception("Erro ao navegar para a próxima página")
             break
 
-    print(f"\nDownload concluído: {log_stats['total']} faturas processadas, "
-          f"{log_stats['sucesso']} inseridas com sucesso, {log_stats['falha']} falhas")
+    logger.info(f"Download concluído: {log_stats['total']} faturas processadas, "
+                f"{log_stats['sucesso']} inseridas com sucesso, {log_stats['falha']} falhas")
 
     if log_stats["falha"] > 0:
-        print("Resumo das falhas:")
+        logger.info("Resumo das falhas:")
         for falha in log_stats["falhas"]:
-            print(falha)
+            logger.info(falha)

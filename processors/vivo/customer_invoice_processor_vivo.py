@@ -18,10 +18,8 @@ def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_d
         customer_selector.close_menu()
         return
 
-    logging.info(f"Encontrados {len(cnpjs)} CNPJs.")
-
     for cnpj_atual in cnpjs:
-        logging.info(f"--- Processando CNPJ: {cnpj_atual} ---")
+        logging.info(f"--- Processando CNPJ: {cnpj_atual} ---\n")
         tentativas = 0
         sucesso = False
 

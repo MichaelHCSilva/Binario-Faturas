@@ -55,7 +55,6 @@ class LoginPageVivo:
         try:
             btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit' and @data-test-access-button]")))
             self.driver.execute_script("arguments[0].click();", btn)
-            logger.info("Login com sucesso (Vivo).")
         except Exception as e:
             logger.error(f"Erro ao clicar em 'Entrar' (Vivo): {e}", exc_info=True)
 
