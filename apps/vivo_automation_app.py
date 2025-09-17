@@ -18,7 +18,6 @@ class ApplicationVivo:
         self.usuario = os.getenv("LOGIN_USUARIO")
         self.senha = os.getenv("LOGIN_SENHA")
         self.login_url = os.getenv("VIVO_LOGIN_URL")
-
         self.LINUX_DOWNLOAD_DIR = os.getenv("LINUX_DOWNLOAD_DIR")
         self.USER_DATA_DIR = os.getenv("CHROME_USER_DATA_DIR")
         self.PROFILE_DIRECTORY = os.getenv("CHROME_PROFILE_DIRECTORY")
@@ -52,15 +51,10 @@ class ApplicationVivo:
 
         try:
             self.driver = create_driver(self.LINUX_DOWNLOAD_DIR)
-            
             self.popup_manager = PopupManager(self.driver, timeout=2)
-            
             self.login_page = LoginPageVivo(self.driver, self.login_url)
-
             self.login_page.open_login_page()
-            
             self.login_page.perform_login(self.usuario, self.senha)
-            
             self.popup_manager.handle_all()
 
             attempt = 0

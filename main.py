@@ -13,12 +13,12 @@ Base.metadata.create_all(bind=engine)
 logger.info("Tabela 'faturas' criada ou verificada com sucesso.")
 
 def main():
-    logger.info("Iniciando automação Vivo...")
+    logger.info("Iniciando automação Vivo...\n")
     vivo_app = ApplicationVivo()
     vivo_app.run()
     logger.info("Automação Vivo finalizada.\n")
 
-    logger.info("\nIniciando automação Claro...")
+    logger.info("Iniciando automação Claro...")
     claro_app = ClaroAutomationApp()
     claro_app.run()
     logger.info("Automação Claro finalizada.\n")

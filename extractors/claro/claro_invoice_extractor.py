@@ -65,12 +65,10 @@ def extrair_claro(pdf_path: str) -> list:
     if match_total:
         dados["valor_total"] = float(match_total.group(1).replace(".", "").replace(",", "."))
 
-    # Juros (ex.: "juros diários de 0,033%")
     match_juros = re.search(r"juros\s+\w+\s+de\s+([\d.,]+)%", texto, re.IGNORECASE)
     if match_juros:
         dados["valores_juros"] = match_juros.group(1) + "% ao dia"
 
-    # Multa (ex.: "multa de 2%")
     match_multa = re.search(r"multa\s+de\s+([\d.,]+)%", texto, re.IGNORECASE)
     if match_multa:
         dados["valores_multa"] = match_multa.group(1) + "%"
@@ -82,7 +80,6 @@ def extrair_claro(pdf_path: str) -> list:
     if match_cnpj:
         dados["numero_cnpj"] = match_cnpj.group(1).strip()
 
-    # Valor da NF (na Claro vem como "TOTAL DA NOTA FISCAL")
     match_valor_nf = re.search(r"TOTAL\s+DA\s+NOTA\s+FISCAL[:\s]*([\d.,]+)", texto, re.IGNORECASE)
     if match_valor_nf:
         valor_nf_str = match_valor_nf.group(1).replace(".", "").replace(",", ".")

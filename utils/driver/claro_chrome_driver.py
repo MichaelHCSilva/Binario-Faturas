@@ -1,9 +1,11 @@
+#claro_chrome_driver
 import logging
 import os
+import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from dotenv import load_dotenv 
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
@@ -46,5 +48,8 @@ def configurar_driver_chrome(
             });
         """
     })
+    
+    # Pequena espera para estabilidade
+    time.sleep(3)
     
     return driver

@@ -1,3 +1,4 @@
+#claro_automation_app
 import logging, os, time
 from dotenv import load_dotenv
 from selenium.common.exceptions import WebDriverException
@@ -116,13 +117,10 @@ class ClaroAutomationApp:
             return
 
         try:
-            logger.info("Iniciando processo de login...")
             self._login()
 
-            logger.info("Inicializando serviços de faturas...")
             self._init_services()
 
-            logger.info("Iniciando processo de download de faturas (com controle de sessão)...")
             self._process_contracts()
         except Exception as e:
             logger.error(f"Erro inesperado na automação Claro: {type(e).__name__} - {e}", exc_info=True)

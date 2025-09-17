@@ -20,17 +20,16 @@ class DownloadService:
                 logger.warning("Nenhuma fatura pendente disponível para download.")
                 return []
 
-            logger.info(f"Fatura selecionada para download: {nome_arquivo}")
             status = mover_arquivo(nome_arquivo, linux_download_dir, numero_contrato)
 
             if status == "movido":
-                logger.info("Download concluído e arquivo movido com sucesso.")
+                logger.info("Download concluído.\n")
             elif status == "existia":
-                logger.info("Arquivo já existia no destino. Movimento não necessário.")
+                logger.info("Arquivo já existiE.\n")
             elif status == "nao_encontrado":
-                logger.warning("Falha técnica: arquivo não encontrado para movimento.")
+                logger.warning("Falha técnica: arquivo não encontrado.\n")
             else:
-                logger.error("Falha técnica: erro inesperado ao mover o arquivo.")
+                logger.error("Falha técnica: erro inesperado ao mover o arquivo.\n")
 
             return [nome_arquivo]
 

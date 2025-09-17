@@ -27,7 +27,6 @@ class LoginPage:
                 WebDriverWait(self.driver, 10).until(
                     lambda d: d.execute_script("return document.readyState") == "complete"
                 )
-                logger.info("Página de login aberta com sucesso.")
                 break
             except (TimeoutException, WebDriverException):
                 if attempt == retries:
@@ -68,7 +67,6 @@ class LoginPage:
             )
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
             self.driver.execute_script("arguments[0].click();", btn)
-            logger.info("Botão 'Entrar' clicado com sucesso.")
         except Exception:
             logger.warning("Falha técnica ao clicar no botão 'Entrar'.")
 
@@ -81,7 +79,6 @@ class LoginPage:
             )
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", link)
             self.driver.execute_script("arguments[0].click();", link)
-            logger.info("Atalho 'Minha Claro Residencial' selecionado com sucesso.")
         except Exception:
             logger.warning("Falha técnica ao selecionar 'Minha Claro Residencial'.")
 
@@ -93,7 +90,6 @@ class LoginPage:
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
             campo.clear()
             campo.send_keys(usuario)
-            logger.info("Usuário preenchido no campo de login.")
         except Exception:
             logger.warning("Falha técnica ao preencher o usuário no campo de login.")
 
@@ -104,7 +100,6 @@ class LoginPage:
             )
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
             self.driver.execute_script("arguments[0].click();", btn)
-            logger.info("Botão 'Continuar' clicado com sucesso.")
         except Exception:
             logger.warning("Falha técnica ao clicar no botão 'Continuar'.")
 
@@ -126,6 +121,5 @@ class LoginPage:
             )
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
             self.driver.execute_script("arguments[0].click();", btn)
-            logger.info("Botão 'Acessar' clicado com sucesso.")
         except Exception:
             logger.warning("Falha técnica ao clicar no botão 'Acessar'.")
