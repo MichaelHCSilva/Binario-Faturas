@@ -1,4 +1,4 @@
-#claro_automation_app
+# claro_automation_app
 import logging, os, time
 from dotenv import load_dotenv
 from selenium.common.exceptions import WebDriverException
@@ -15,6 +15,7 @@ from utils.session_manager_claro import ClaroSessionHandler
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
 
 class ClaroAutomationApp:
     def __init__(self):
@@ -99,16 +100,33 @@ class ClaroAutomationApp:
                 return self.session_handler.execute_with_session(action)
             except Exception as e:
                 logger.error(
-                    f"Erro ao baixar faturas do contrato {numero_contrato}: {type(e).__name__} - {e}",
+                    f"Erro ao baixar ou processar faturas do contrato {numero_contrato}: {type(e).__name__} - {e}",
                     exc_info=True
                 )
+                try:
+                    self.fatura_page.registrar_falha_json(
+                        contrato=numero_contrato,
+                        pagina=None,
+                        posicao=None,
+                        erro=f"{type(e).__name__}: {e}"
+                    )
+                except Exception as json_err:
+                    logger.warning(
+                        f"Falha ao registrar erro no JSON para contrato {numero_contrato}: {type(json_err).__name__} - {json_err}"
+                    )
                 return []
 
         def action():
-            self.fatura_page.processar_todos_contratos_ativos(
-                download_faturas_callback,
-                self.CONTRATOS_URL
-            )
+            try:
+                self.fatura_page.processar_todos_contratos_ativos(
+                    download_faturas_callback,
+                    self.CONTRATOS_URL
+                )
+            except Exception as e:
+                logger.error(
+                    f"Erro ao processar contratos: {type(e).__name__} - {e}",
+                    exc_info=True
+                )
 
         self.session_handler.execute_with_session(action)
 
@@ -118,9 +136,7 @@ class ClaroAutomationApp:
 
         try:
             self._login()
-
             self._init_services()
-
             self._process_contracts()
         except Exception as e:
             logger.error(f"Erro inesperado na automação Claro: {type(e).__name__} - {e}", exc_info=True)

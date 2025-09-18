@@ -1,3 +1,4 @@
+#session_manager_claro
 import logging
 from selenium.common.exceptions import WebDriverException, NoSuchElementException, TimeoutException
 
@@ -29,8 +30,9 @@ class ClaroSessionHandler:
 
     def _login(self):
         logger.info("Realizando login na Claro...")
-        self.login_page.login(self.usuario, self.senha)
+        self.login_page.perform_login(self.usuario, self.senha)
         logger.info("Login realizado com sucesso.")
+
 
     def execute_with_session(self, action):
 
@@ -39,6 +41,6 @@ class ClaroSessionHandler:
                 self._login()
             return action()
         except (WebDriverException, TimeoutException, NoSuchElementException) as e:
-            logger.warning(f"Erro de sessão detectado ({e}), tentando refazer login...")
+            logger.warning("Sessão expirada ou instável detectada. Tentando efetuar login novamente para continuar a operação.")
             self._login()
             return action()

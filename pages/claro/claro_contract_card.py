@@ -19,7 +19,6 @@ class ContratoCard:
         self.card_element = card_element
 
     def esta_encerrado(self) -> bool:
-        """Verifica se o contrato está encerrado e loga a informação."""
         for tentativa in range(3):
             try:
                 span_inativo = WebDriverWait(self.card_element, 3).until(
@@ -41,7 +40,6 @@ class ContratoCard:
         return False
 
     def clicar_selecionar(self, tentativas=3) -> bool:
-        """Tenta clicar no botão 'Selecionar' dentro do card."""
         for tentativa in range(1, tentativas + 1):
             try:
                 botao = WebDriverWait(self.card_element, 5).until(
@@ -77,7 +75,6 @@ class ContratoCard:
         return False
 
     def obter_numero_contrato(self) -> str:
-        """Obtém o número do contrato, removendo texto de encerrado se presente."""
         for tentativa in range(3):
             try:
                 numero_div = self.card_element.find_element(By.CSS_SELECTOR, "div.mdn-Text.mdn-Text--body")

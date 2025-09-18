@@ -1,3 +1,4 @@
+# utils/download_utils.py
 import os
 import time
 import shutil
@@ -11,20 +12,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 CHROME_DOWNLOAD_DIR = os.getenv("CHROME_DOWNLOAD_DIR")
 
+
 def garantir_diretorio(diretorio: str) -> None:
     try:
         if not os.path.exists(diretorio):
             os.makedirs(diretorio)
-            logger.info(f"Diretório criado")
-        else:
-            logger.info(f"Diretório já existe")
+            logger.info(f"Diretório criado: {diretorio}")
     except Exception as e:
         logger.error(f"Erro ao garantir diretório {diretorio}: {e}", exc_info=True)
 
-def esperar_arquivo_download_concluido(caminho_arquivo: str, timeout: int = 30) -> bool:
-    tempo_espera = 0
-    intervalo_checagem = 1
-    while tempo_espera < timeout:
+
+def esperar_arquivo_dinamico(caminho_arquivo: str, intervalo_checar: float = 0.5, timeout: int = 60) -> bool:
+    inicio = time.time()
+    while True:
         try:
             if os.path.isfile(caminho_arquivo) and not (
                 os.path.exists(caminho_arquivo + ".crdownload") or
@@ -34,16 +34,18 @@ def esperar_arquivo_download_concluido(caminho_arquivo: str, timeout: int = 30) 
         except Exception as e:
             logger.warning(f"Erro ao verificar arquivo {caminho_arquivo}: {e}", exc_info=True)
 
-        time.sleep(intervalo_checagem)
-        tempo_espera += intervalo_checagem
+        if time.time() - inicio > timeout:
+            logger.warning(f"Timeout: arquivo {caminho_arquivo} não apareceu em até {timeout}s.")
+            return False
 
-    logger.warning(f"Timeout: arquivo {caminho_arquivo} não apareceu após {timeout}s.")
-    return False
+        time.sleep(intervalo_checar)
+
 
 def mover_arquivo(nome_arquivo_original: str, destino_dir: str, numero_contrato: str) -> str:
-
     if CHROME_DOWNLOAD_DIR is None:
-        logger.error("A variável de ambiente 'CHROME_DOWNLOAD_DIR' não foi encontrada. Verifique o seu arquivo .env.")
+        logger.error(
+            "A variável de ambiente 'CHROME_DOWNLOAD_DIR' não foi encontrada. Verifique o arquivo .env."
+        )
         return "erro"
 
     origem = os.path.join(CHROME_DOWNLOAD_DIR, nome_arquivo_original)
@@ -53,7 +55,7 @@ def mover_arquivo(nome_arquivo_original: str, destino_dir: str, numero_contrato:
         logger.info(f"Arquivo já existe em ambos os caminhos: {origem} e {destino}. Pulando.")
         return "existia"
 
-    if esperar_arquivo_download_concluido(origem):
+    if esperar_arquivo_dinamico(origem):
         try:
             garantir_diretorio(destino_dir)
 
@@ -71,5 +73,7 @@ def mover_arquivo(nome_arquivo_original: str, destino_dir: str, numero_contrato:
             logger.error(f"Erro ao mover arquivo {nome_arquivo_original}: {e}", exc_info=True)
             return "erro"
     else:
-        logger.warning(f"Arquivo {origem} não encontrado no diretório de downloads do Chrome. Não foi possível mover.")
+        logger.warning(
+            f"Arquivo {origem} não encontrado no diretório de downloads do Chrome. Não foi possível mover."
+        )
         return "nao_encontrado"
