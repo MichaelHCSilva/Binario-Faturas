@@ -12,7 +12,6 @@ class ClaroSessionHandler:
         self.senha = senha
 
     def _is_session_active(self) -> bool:
-
         try:
             _ = self.driver.title
         except WebDriverException:
@@ -23,6 +22,12 @@ class ClaroSessionHandler:
             if self.login_page.is_login_form_visible():
                 logger.info("Sessão expirada, login necessário.")
                 return False
+
+            contratos = self.driver.find_elements("class name", "contract")
+            if self.driver.current_url and "contrato" in self.driver.current_url.lower() and not contratos:
+                logger.warning("Sessão possivelmente expirada: contratos não renderizados.")
+                return False
+
         except Exception:
             return True
 

@@ -25,7 +25,7 @@ class DownloadService:
             if status == "movido":
                 logger.info("Download concluído.\n")
             elif status == "existia":
-                logger.info("Arquivo já existiE.\n")
+                logger.info("Arquivo já baixado e presente no diretório de destino.\n")
             elif status == "nao_encontrado":
                 logger.warning("Falha técnica: arquivo não encontrado.\n")
             else:

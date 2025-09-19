@@ -54,7 +54,6 @@ class ClaroAutomationApp:
             login_page = LoginPage(self.driver, self.CLARO_LOGIN_URL)
             popup_manager = PopupManager(self.driver, timeout=2)
 
-            logger.info("Abrindo página da Claro...")
             login_page.open_login_page()
             popup_manager.handle_all()
 
@@ -73,7 +72,7 @@ class ClaroAutomationApp:
                     lambda d: d.execute_script("return document.readyState") == "complete"
                 )
                 time.sleep(1)
-                logger.info("Login concluído e página estabilizada.")
+                logger.info("Login concluído.")
 
             self.session_handler = ClaroSessionHandler(
                 self.driver, login_page, self.USUARIO_CLARO, self.SENHA_CLARO

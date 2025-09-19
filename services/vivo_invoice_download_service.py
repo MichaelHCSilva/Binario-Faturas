@@ -122,7 +122,7 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
     ]
 
     if not pending:
-        logger.info(f"Nenhuma fatura pendente na página {page_number}.")
+        logger.info(f"Nenhuma fatura pendente na página {page_number}.\n")
         return
 
     logger.info(f"Página {page_number}")
@@ -265,7 +265,7 @@ def download_all_paginated_invoices(driver, popup_manager, download_dir, base_fo
             break
 
     logger.info(f"Download concluído: {log_stats['total']} faturas processadas, "
-                f"{log_stats['sucesso']} inseridas com sucesso, {log_stats['falha']} falhas")
+                f"{log_stats['sucesso']} inseridas com sucesso, {log_stats['falha']} falhas\n")
 
     if log_stats["falha"] > 0:
         logger.info("Resumo das falhas:")

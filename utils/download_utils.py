@@ -17,7 +17,7 @@ def garantir_diretorio(diretorio: str) -> None:
     try:
         if not os.path.exists(diretorio):
             os.makedirs(diretorio)
-            logger.info(f"Diretório criado: {diretorio}")
+            logger.info(f"Diretório criado.\n")
     except Exception as e:
         logger.error(f"Erro ao garantir diretório {diretorio}: {e}", exc_info=True)
 
@@ -60,10 +60,8 @@ def mover_arquivo(nome_arquivo_original: str, destino_dir: str, numero_contrato:
             garantir_diretorio(destino_dir)
 
             if os.path.exists(destino):
-                logger.info(f"Arquivo já existe no destino: {destino}. Pulando movimento.")
                 if os.path.exists(origem):
                     os.remove(origem)
-                    logger.info(f"Arquivo removido do diretório de origem: {origem}")
                 return "existia"
 
             shutil.move(origem, destino)
