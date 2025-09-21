@@ -1,4 +1,4 @@
-#claro_pending_invoices_page
+# claro_pending_invoices_page
 import logging
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -37,16 +37,24 @@ class FaturasPendentesPage:
             return False
 
     def _buscar_faturas_pendentes(self, mes, ano) -> List:
-        try: self.wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "invoice-list-item")))
-        except TimeoutException: return []
+        try: 
+            self.wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "invoice-list-item")))
+        except TimeoutException: 
+            return []
+        
         faturas_pendentes = []
         mes_ano_str = f"{mes} {ano}".lower()
+        
         for f in self.driver.find_elements(By.CLASS_NAME, "invoice-list-item"):
             try:
                 titulo = self._normalizar_texto(f.find_element(By.CLASS_NAME, "invoice-list-item__content-infos-text--title").text)
                 status_texto = self._normalizar_texto(f.find_element(By.CLASS_NAME, "status-tag").text)
-                if mes_ano_str in titulo and status_texto == 'aguardando': faturas_pendentes.append(f)
-            except Exception: continue
+                
+                if mes_ano_str in titulo and (status_texto == 'aguardando' or status_texto == 'vencida'): 
+                    faturas_pendentes.append(f)
+            except Exception: 
+                continue
+        
         return faturas_pendentes
 
     def selecionar_e_baixar_fatura(self) -> Optional[str]:
@@ -60,9 +68,10 @@ class FaturasPendentesPage:
                         botao = f.find_element(By.XPATH, ".//a[contains(text(), 'Selecionar')]")
                         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", botao)
                         self.wait.until(EC.element_to_be_clickable(botao)).click()
-                        download_link = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'[data-testid="download-invoice"]')))
+                        download_link = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="download-invoice"]')))
                         nome_arquivo = download_link.get_attribute("download")
                         self.driver.execute_script("arguments[0].click();", download_link)
                         return nome_arquivo
-                    except Exception: continue
+                    except Exception: 
+                        continue
         return None

@@ -23,7 +23,7 @@ def main():
     claro_app.run()
     logger.info("Automação Claro finalizada.\n")
         
-    logger.info("\nServiço de faturas concluído.")
+    logger.info("Serviço de faturas concluído.")
 
 if __name__ == "__main__":
     main()
