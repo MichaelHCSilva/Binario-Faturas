@@ -22,7 +22,7 @@ def garantir_diretorio(diretorio: str) -> None:
         logger.error(f"Erro ao garantir diretório {diretorio}: {e}", exc_info=True)
 
 
-def esperar_arquivo_dinamico(caminho_arquivo: str, intervalo_checar: float = 0.5, timeout: int = 60) -> bool:
+def esperar_arquivo_dinamico(caminho_arquivo: str, intervalo_checar: float = 0.5, timeout: int = 30) -> bool:
     inicio = time.time()
     while True:
         try:
@@ -52,7 +52,7 @@ def mover_arquivo(nome_arquivo_original: str, destino_dir: str, numero_contrato:
     destino = os.path.join(destino_dir, nome_arquivo_original)
 
     if os.path.exists(origem) and os.path.exists(destino):
-        logger.info(f"Arquivo já existe em ambos os caminhos: {origem} e {destino}. Pulando.")
+        logger.info(f"Arquivo já existe em ambos os caminhos: {origem} e {destino}. Avançando.")
         return "existia"
 
     if esperar_arquivo_dinamico(origem):

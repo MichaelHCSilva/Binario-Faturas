@@ -22,7 +22,7 @@ class LoginPageVivo:
                 self.wait.until(EC.presence_of_element_located((By.ID, "login-input")))
                 break
             except (TimeoutException, WebDriverException) as e:
-                logger.warning(f"Erro ao abrir página Vivo (tentativa {attempt+1}/{retries}): {e}")
+                logger.warning(f"Erro ao abrir página Vivo (tentativa {attempt+1}/{retries})")
                 if attempt == retries - 1:
                     logger.error("Falha ao abrir página de login Vivo após múltiplas tentativas.", exc_info=True)
                     raise

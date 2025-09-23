@@ -2,11 +2,14 @@
 import os
 import time
 import logging
+from datetime import datetime
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 from pages.claro.claro_home_page import HomePage
 from pages.vivo.customer_selector_page_vivo import CustomerSelectorPage
 from services.vivo_invoice_download_service import download_all_paginated_invoices
 from utils.session_manager_vivo import ensure_logged_in
+from utils.json_failure_logger import JsonFailureLogger
+
 
 def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_download_base, skip_existing=True):
     customer_selector = CustomerSelectorPage(driver)
@@ -14,14 +17,17 @@ def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_d
     cnpjs = customer_selector.get_cnpjs()
 
     if not cnpjs:
-        logging.warning("Nenhum CNPJ encontrado. Abortando.")
+        logging.warning("Nenhum CNPJ encontrado.")
         customer_selector.close_menu()
         return
+
+    json_logger = JsonFailureLogger()
 
     for cnpj_atual in cnpjs:
         logging.info(f"--- Processando CNPJ: {cnpj_atual} ---\n")
         tentativas = 0
         sucesso = False
+        ultimo_erro = None
 
         while tentativas < 3 and not sucesso:
             try:
@@ -33,7 +39,9 @@ def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_d
 
                 if not customer_selector.click_by_text(cnpj_atual):
                     tentativas += 1
-                    logging.warning(f"Não foi possível selecionar {cnpj_atual}. Tentativa {tentativas}")
+                    ultimo_erro = f"Não foi possível selecionar {cnpj_atual}. Tentativa {tentativas}"
+                    logging.warning(ultimo_erro)
+
                     time.sleep(2)
                     try:
                         customer_selector.open_menu()
@@ -45,7 +53,9 @@ def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_d
                 popup_manager.handle_all()
 
                 if not home_page.verificar_opcao_acessar_faturas():
-                    logging.info(f"{cnpj_atual} não possui opção 'Acessar faturas'. Pulando...")
+                    ultimo_erro = f"{cnpj_atual} não possui opção 'Acessar faturas'. Avançando..."
+                    logging.info(ultimo_erro)
+
                     driver.back()
                     time.sleep(2)
                     customer_selector.open_menu()
@@ -77,18 +87,36 @@ def process_customers(driver, popup_manager, login_page, usuario, senha, pasta_d
             except Exception as e:
                 import traceback
                 if isinstance(e, TimeoutException):
-                    logging.error(f"Erro processando {cnpj_atual}: Tempo limite ao aguardar a página ou elemento.")
+                    erro_msg = "Tempo limite ao aguardar a página ou elemento."
+                    logging.error(f"Erro processando {cnpj_atual}: {erro_msg}")
                 elif isinstance(e, NoSuchElementException):
-                    logging.error(f"Erro processando {cnpj_atual}: Elemento esperado não foi encontrado na página.")
+                    erro_msg = "Elemento esperado não foi encontrado na página."
+                    logging.error(f"Erro processando {cnpj_atual}: {erro_msg}")
                 elif isinstance(e, WebDriverException):
-                    logging.error(f"Erro processando {cnpj_atual}: Problema de comunicação com o navegador.")
+                    erro_msg = "Problema de comunicação com o navegador."
+                    logging.error(f"Erro processando {cnpj_atual}: {erro_msg}")
                 else:
-                    logging.error(f"Erro processando {cnpj_atual}: Erro inesperado ({type(e).__name__}).")
+                    erro_msg = "Erro inesperado."
+                    logging.error(f"Erro processando {cnpj_atual}: {erro_msg}")
 
                 logging.debug(traceback.format_exc())
 
                 tentativas += 1
+                ultimo_erro = erro_msg
                 time.sleep(3)
 
         if not sucesso:
-            logging.warning(f"Falha após 3 tentativas no CNPJ {cnpj_atual}. Pulando para o próximo.")
+            if not ultimo_erro:
+                ultimo_erro = f"Falha após 3 tentativas no CNPJ {cnpj_atual}. Avançando para o próximo."
+            else:
+                ultimo_erro = f"Falha após 3 tentativas no CNPJ {cnpj_atual}. Último erro: {ultimo_erro}"
+
+            logging.warning(ultimo_erro)
+
+            dados_falha = {
+                "cnpj": cnpj_atual,
+                "tentativa": tentativas,
+                "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "erro": ultimo_erro
+            }
+            json_logger.registrar_falha_vivo(dados_falha)

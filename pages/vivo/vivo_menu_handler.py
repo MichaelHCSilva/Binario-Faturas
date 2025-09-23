@@ -6,7 +6,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
 from utils.vivo_file_utils import wait_for_download_file, move_file
-from services.invoice_service import FaturaService
+from processors.invoice_processor import FaturaService
 
 logger = logging.getLogger(__name__)
 

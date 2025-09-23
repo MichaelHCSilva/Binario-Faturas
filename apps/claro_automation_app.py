@@ -63,7 +63,7 @@ class ClaroAutomationApp:
             time.sleep(1)
 
             if login_page.esta_logado():
-                logger.info("Sessão já ativa, pulando login.")
+                logger.info("Sessão já ativa, avançando login.")
             else:
                 logger.info("Usuário não está logado. Iniciando login...")
                 login_page.perform_login(self.USUARIO_CLARO, self.SENHA_CLARO)

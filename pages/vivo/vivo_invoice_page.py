@@ -1,6 +1,8 @@
 import os
 import time
+import json
 import logging
+from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -12,11 +14,45 @@ from selenium.common.exceptions import (
 )
 
 from utils.vivo_file_utils import wait_for_download_file, move_file, extract_zip
-from services.invoice_service import FaturaService
-from services.vivo_logging import log_fatura
-from services.vivo_menu_handler import process_invoice_menu_button
+from processors.invoice_processor import FaturaService
+from pages.vivo.vivo_logging import log_fatura
+from pages.vivo.vivo_menu_handler import process_invoice_menu_button
 
 logger = logging.getLogger(__name__)
+
+FAILURE_FILE = "vivo_failures.json"
+
+def _extract_customer_code(pdf_name: str):
+    try:
+        parts = pdf_name.split("_")
+        if len(parts) >= 3:
+            return parts[1]
+    except Exception:
+        pass
+    return None
+
+def _register_failure(target_folder, page, position, pdf_name, error):
+    failure_path = os.path.join(os.environ.get("LINUX_DOWNLOAD_DIR"), FAILURE_FILE)
+
+    failure_data = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "page": page,
+        "position": position,
+        "customer_code": _extract_customer_code(pdf_name),
+        "invoice": pdf_name,
+        "error": error
+    }
+
+    try:
+        existing = []
+        if os.path.exists(failure_path):
+            with open(failure_path, "r", encoding="utf-8") as f:
+                existing = json.load(f) or []
+        existing.append(failure_data)
+        with open(failure_path, "w", encoding="utf-8") as f:
+            json.dump(existing, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        logger.error(f"Erro ao registrar falha no JSON da Vivo: {e}")
 
 def download_invoices_from_page(driver, popup_manager, download_dir, target_folder, cnpj,
                                 login_page=None, usuario=None, senha=None,
@@ -110,6 +146,7 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
                                 else:
                                     log_fatura(page_number, i, total_page, pdf_name, sucesso=False,
                                                motivo="não cadastrada no banco")
+                                    _register_failure(target_folder, page_number, i, pdf_name, "not registered in database")
                         success = True
                         break
 
@@ -126,6 +163,7 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
                         else:
                             log_fatura(page_number, i, total_page, pdf_name, sucesso=False,
                                        motivo="não cadastrada no banco")
+                            _register_failure(target_folder, page_number, i, pdf_name, "not registered in database")
                         success = True
                         break
 
@@ -133,8 +171,10 @@ def download_invoices_from_page(driver, popup_manager, download_dir, target_fold
                 time.sleep(0.3)
             except Exception:
                 log_fatura(page_number, i, total_page, pdf_name, sucesso=False, motivo="erro inesperado")
+                _register_failure(target_folder, page_number, i, pdf_name, "unexpected error")
                 logger.exception("Erro inesperado ao baixar fatura")
                 break
 
         if not success:
             log_fatura(page_number, i, total_page, pdf_name, sucesso=False, motivo="falhou após 2 tentativas")
+            _register_failure(target_folder, page_number, i, pdf_name, "failed after 2 attempts")

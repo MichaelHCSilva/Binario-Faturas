@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -8,17 +9,23 @@ from selenium.common.exceptions import TimeoutException
 
 from utils.popup_manager import PopupManager
 from utils.session_manager_vivo import ensure_logged_in
-from services.vivo_logging import logger, log_stats
-from services.vivo_invoice_page import download_invoices_from_page
+from pages.vivo.vivo_logging import logger, log_stats
+from pages.vivo.vivo_invoice_page import download_invoices_from_page
+from utils.json_failure_logger import JsonFailureLogger
 
 def download_all_paginated_invoices(driver, popup_manager, download_dir, base_folder, cnpj,
                                     login_page=None, usuario=None, senha=None,
                                     reopen_customer_fn=None, skip_existing=True):
     global log_stats
-    log_stats = {"total": 0, "sucesso": 0, "falha": 0, "falhas": []}
+    log_stats["total"] = 0
+    log_stats["sucesso"] = 0
+    log_stats["falha"] = 0
+    log_stats["falhas"].clear()
 
     target_folder = os.path.join(base_folder, "Vivo", cnpj.replace(".", "").replace("/", "-"))
     os.makedirs(target_folder, exist_ok=True)
+
+    failure_logger = JsonFailureLogger()
 
     page = 1
     first = ""
@@ -46,6 +53,14 @@ def download_all_paginated_invoices(driver, popup_manager, download_dir, base_fo
                 except Exception:
                     logger.exception("Erro ao reabrir cliente")
             else:
+                dados_falha = {
+                    "cliente": cnpj,
+                    "pagina": page,
+                    "posicao": None,
+                    "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "erro": "Nenhuma fatura disponível nesta conta"
+                }
+                failure_logger.registrar_falha_vivo(dados_falha)
                 logger.info("Nenhuma fatura disponível nesta conta.")
                 return
 
@@ -78,7 +93,15 @@ def download_all_paginated_invoices(driver, popup_manager, download_dir, base_fo
             page += 1
         except TimeoutException:
             break
-        except Exception:
+        except Exception as e:
+            dados_falha = {
+                "cliente": cnpj,
+                "pagina": page,
+                "posicao": None,
+                "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "erro": f"Erro ao navegar para a próxima página: {str(e)}"
+            }
+            failure_logger.registrar_falha_vivo(dados_falha)
             logger.exception("Erro ao navegar para a próxima página")
             break
 
@@ -89,3 +112,4 @@ def download_all_paginated_invoices(driver, popup_manager, download_dir, base_fo
         logger.info("Resumo das falhas:")
         for falha in log_stats["falhas"]:
             logger.info(falha)
+            failure_logger.registrar_falha(falha)

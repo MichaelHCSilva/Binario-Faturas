@@ -4,7 +4,7 @@ import time
 import shutil
 import zipfile
 
-def wait_for_download_file(download_dir, before_files, extension=".pdf", timeout=30):
+def wait_for_download_file(download_dir, before_files, extension=".pdf", timeout=20):
     
     end_time = time.time() + timeout
     while time.time() < end_time:

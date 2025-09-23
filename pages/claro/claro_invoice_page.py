@@ -10,9 +10,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 
 from pages.claro.claro_contract_card import ContratoCard
-from services.invoice_service import FaturaService
+from processors.invoice_processor import FaturaService
 from utils.json_failure_logger import JsonFailureLogger
-from utils.navigation_helper import NavigationHelper
+from pages.claro.claro_navigation_helper import NavigationHelper
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class FaturaPage:
         self.pasta_faturas = pasta_faturas
         self.fatura_service = FaturaService(self.pasta_faturas)
 
-        self.json_logger = JsonFailureLogger(self.fatura_service.pasta_faturas)
+        self.json_logger = JsonFailureLogger()
         self.navigation = NavigationHelper(self.driver, self.wait)
 
     def processar_todos_contratos_ativos(self, callback_processamento: Callable[[str], Any], contratos_url: str):
@@ -47,7 +47,7 @@ class FaturaPage:
                 try:
                     element = self.navigation.recapturar_elemento_card(i)
                     if element is None:
-                        logger.warning(f"Elemento de contrato no índice {i} não encontrado (página {pagina_atual}). Pulando.")
+                        logger.warning(f"Elemento de contrato no índice {i} não encontrado (página {pagina_atual}). Avançando.")
                         continue
 
                     card = ContratoCard(self.driver, element)
@@ -60,7 +60,8 @@ class FaturaPage:
                             "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "erro": "Contrato encerrado, nenhuma fatura disponível"
                         }
-                        self.json_logger.registrar_falha(dados_falha)
+                        self.json_logger.registrar_falha_claro(dados_falha)
+
                         continue
 
                     if not card.clicar_selecionar():
@@ -71,7 +72,8 @@ class FaturaPage:
                             "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "erro": "Não foi possível clicar no botão 'Selecionar'."
                         }
-                        self.json_logger.registrar_falha(dados_falha)
+                        self.json_logger.registrar_falha_claro(dados_falha)
+
                         continue
 
                     numero_contrato = card.obter_numero_contrato()
@@ -86,7 +88,8 @@ class FaturaPage:
                             "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "erro": mensagem
                         }
-                        self.json_logger.registrar_falha(dados_falha)
+                        self.json_logger.registrar_falha_claro(dados_falha)
+
                         self.navigation.voltar_para_pagina_contratos(contratos_url)
                         for _ in range(pagina_atual - 1):
                             if not self.navigation.avancar_para_proxima_pagina(contratos_url, pagina_atual):
@@ -115,7 +118,8 @@ class FaturaPage:
                             "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "erro": erro_callback if erro_callback else "Nenhum arquivo gerado após tentativas"
                         }
-                        self.json_logger.registrar_falha(dados_falha)
+                        self.json_logger.registrar_falha_claro(dados_falha)
+
                     else:
                         for arquivo in arquivos:
                             self.fatura_service.processar_fatura_pdf(os.path.join(self.fatura_service.pasta_faturas, arquivo))
@@ -134,7 +138,8 @@ class FaturaPage:
                         "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "erro": "Elemento de contrato ficou obsoleto (StaleElementReferenceException)"
                     }
-                    self.json_logger.registrar_falha(dados_falha)
+                    self.json_logger.registrar_falha_claro(dados_falha)
+
                     continue
                 except Exception as e:
                     dados_falha = {
@@ -144,7 +149,8 @@ class FaturaPage:
                         "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "erro": str(e)
                     }
-                    self.json_logger.registrar_falha(dados_falha)
+                    self.json_logger.registrar_falha_claro(dados_falha)
+
                     try:
                         self.navigation.voltar_para_pagina_contratos(contratos_url)
                         for _ in range(pagina_atual - 1):
@@ -195,7 +201,7 @@ class FaturaPage:
                             "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "erro": mensagem
                         }
-                        self.json_logger.registrar_falha(dados_falha)
+                        self.json_logger.registrar_falha_claro(dados_falha)
                         self.navigation.voltar_para_pagina_contratos(self.driver.current_url)
                         return
                     except TimeoutException:
